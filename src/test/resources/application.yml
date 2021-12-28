@@ -1,0 +1,8 @@
+elasticsearch-hosts:
+  - http://localhost:9200
+
+kestra:
+  storage:
+    type: local
+    local:
+      base-path: /tmp/unittest
