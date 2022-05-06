@@ -25,6 +25,5 @@ public abstract class AbstractTask extends Task {
         description = "Using this value to hash the shard and not the id."
     )
     @PluginProperty(dynamic = true)
-    @NotNull
     protected String routing;
 }
