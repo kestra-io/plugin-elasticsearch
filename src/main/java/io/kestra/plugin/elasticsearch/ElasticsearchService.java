@@ -26,7 +26,7 @@ public abstract class ElasticsearchService {
     public static XContentParser toXContentParser(RunContext runContext, Object value, XContentType contentType) throws IllegalVariableEvaluationException, IOException {
         String json = toBody(runContext, value);
 
-        SearchModule searchModule = new SearchModule(Settings.EMPTY, false, Collections.emptyList());
+        SearchModule searchModule = new SearchModule(Settings.EMPTY, Collections.emptyList());
 
         return XContentFactory.xContent(contentType).createParser(
             new NamedXContentRegistry(searchModule.getNamedXContents()),
