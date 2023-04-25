@@ -20,11 +20,11 @@ repositories {
     }
 }
 
-sourceCompatibility = 11
-targetCompatibility = 11
+sourceCompatibility = 17
+targetCompatibility = 17
 
 group "io.kestra.plugin"
-description 'Elasticsearch Plugin for Kestra'
+description 'Connect Elasticsearch search and analytics engine to Kestra workflows.'
 
 tasks.withType(JavaCompile) {
     options.encoding = "UTF-8"
