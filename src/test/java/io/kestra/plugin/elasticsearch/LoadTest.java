@@ -47,7 +47,7 @@ class LoadTest {
                 "name", "john"
             ));
         }
-        URI uri = storageInterface.put(URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
+        URI uri = storageInterface.put(null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
 
         Load put = Load.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
