@@ -50,7 +50,7 @@ class BulkTest {
             output.write(("{ \"field1\" : \"value4\" }\n").getBytes(StandardCharsets.UTF_8));
         }
 
-        URI uri = storageInterface.put(URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
+        URI uri = storageInterface.put(null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
 
         Bulk put = Bulk.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
