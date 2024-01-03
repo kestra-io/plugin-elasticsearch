@@ -15,7 +15,7 @@ import org.opensearch.client.RestHighLevelClient;
 import org.slf4j.Logger;
 
 import java.util.Map;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 @SuperBuilder
 @ToString
