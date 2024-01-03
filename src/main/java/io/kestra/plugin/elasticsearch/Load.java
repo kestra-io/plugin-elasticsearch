@@ -16,7 +16,7 @@ import org.opensearch.action.index.IndexRequest;
 
 import java.io.BufferedReader;
 import java.util.Map;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 @SuperBuilder
 @ToString

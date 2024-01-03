@@ -22,7 +22,7 @@ import java.io.InputStreamReader;
 import java.net.URI;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 @SuperBuilder
 @ToString

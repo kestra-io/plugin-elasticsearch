@@ -28,8 +28,8 @@ import org.opensearch.client.RestHighLevelClient;
 import java.net.URI;
 import java.util.List;
 import javax.net.ssl.SSLContext;
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 
 @SuperBuilder
 @NoArgsConstructor
