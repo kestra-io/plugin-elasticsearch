@@ -5,9 +5,6 @@ import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
-import io.reactivex.BackpressureStrategy;
-import io.reactivex.Flowable;
-import io.reactivex.FlowableOnSubscribe;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -19,9 +16,15 @@ import org.opensearch.action.delete.DeleteRequest;
 import org.opensearch.action.index.IndexRequest;
 import org.opensearch.action.update.UpdateRequest;
 import org.opensearch.common.xcontent.XContentType;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.util.Map;
+import java.util.function.Consumer;
+
+import static io.kestra.core.utils.Rethrow.throwConsumer;
 
 @SuperBuilder
 @ToString
@@ -45,14 +48,14 @@ import java.util.Map;
 )
 public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
     @Override
-    protected Flowable<DocWriteRequest<?>> source(RunContext runContext, BufferedReader inputStream) {
-        return Flowable
-            .create(this.esNdJSonReader(inputStream), BackpressureStrategy.BUFFER);
+    protected Flux<DocWriteRequest<?>> source(RunContext runContext, BufferedReader inputStream) throws IOException {
+        return Flux
+            .create(this.esNdJSonReader(inputStream), FluxSink.OverflowStrategy.BUFFER);
     }
 
     @SuppressWarnings("unchecked")
-    public FlowableOnSubscribe<DocWriteRequest<?>> esNdJSonReader(BufferedReader input) {
-        return s -> {
+    public Consumer<FluxSink<DocWriteRequest<?>>> esNdJSonReader(BufferedReader input) throws IOException {
+        return throwConsumer(s -> {
             String row;
 
             while ((row = input.readLine()) != null) {
@@ -92,10 +95,10 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                     docWriteRequest.index((String) value.get("_index"));
                 }
 
-                s.onNext(docWriteRequest);
+                s.next(docWriteRequest);
             }
 
-            s.onComplete();
-        };
+            s.complete();
+        });
     }
 }
