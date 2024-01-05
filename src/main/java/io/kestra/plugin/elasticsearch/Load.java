@@ -1,13 +1,12 @@
 package io.kestra.plugin.elasticsearch;
 
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
-import io.reactivex.BackpressureStrategy;
-import io.reactivex.Flowable;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -17,6 +16,10 @@ import org.opensearch.action.index.IndexRequest;
 import java.io.BufferedReader;
 import java.util.Map;
 import jakarta.validation.constraints.NotNull;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
+
+import static io.kestra.core.utils.Rethrow.throwFunction;
 
 @SuperBuilder
 @ToString
@@ -68,10 +71,10 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
 
     @SuppressWarnings("unchecked")
     @Override
-    protected Flowable<DocWriteRequest<?>> source(RunContext runContext, BufferedReader inputStream) {
-        return Flowable
-            .create(FileSerde.reader(inputStream), BackpressureStrategy.BUFFER)
-            .map(o -> {
+    protected Flux<DocWriteRequest<?>> source(RunContext runContext, BufferedReader inputStream) throws IllegalVariableEvaluationException {
+        return Flux
+            .create(FileSerde.reader(inputStream), FluxSink.OverflowStrategy.BUFFER)
+            .map(throwFunction(o -> {
                 Map<String, ?> values = (Map<String, ?>) o;
 
                 IndexRequest indexRequest = new IndexRequest();
@@ -96,6 +99,6 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
                 indexRequest.source(values);
 
                 return indexRequest;
-            });
+            }));
     }
 }
