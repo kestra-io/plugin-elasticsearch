@@ -28,11 +28,12 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Send a generic elasticsearch request"
+    title = "Send a generic ElasticSearch request."
 )
 @Plugin(
     examples = {
         @Example(
+            title = "Inserting a document in an index using POST request.",
             code = {
                 "connection:",
                 "  hosts: ",
@@ -42,7 +43,29 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
                 "body:",
                 "  name: \"john\""
             }
-        )
+        ),
+        @Example(
+            title = "Searching for documents using GET request.",
+            code = {
+                "connection:",
+                "  hosts: ",
+                "   - \"http://localhost:9200\"",
+                "method: \"GET\"",
+                "endpoint: \"my_index/_search\"",
+                "parameters:",
+                "  q: \"name:\\\"John Doe\\\""
+            }
+        ),
+        @Example(
+            title = "Deleting document using DELETE request.",
+            code = {
+                "connection:",
+                "  hosts: ",
+                "   - \"http://localhost:9200\"",
+                "method: \"DELETE\"",
+                "endpoint: \"my_index/_doc/<_id>\"",
+            }
+        ),
     }
 )
 public class Request extends AbstractTask implements RunnableTask<Request.Output> {

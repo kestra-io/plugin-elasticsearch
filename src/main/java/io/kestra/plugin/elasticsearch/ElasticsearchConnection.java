@@ -37,8 +37,8 @@ import jakarta.validation.constraints.NotNull;
 @Introspected
 public class ElasticsearchConnection {
     @Schema(
-        title = "List of http elasticsearch servers",
-        description = "Must be an uri like `https://elasticsearch.com:9200` with scheme and port"
+        title = "List of HTTP ElasticSearch servers.",
+        description = "Must be an URI like `https://elasticsearch.com:9200` with scheme and port."
     )
     @PluginProperty(dynamic = true)
     @NotNull
@@ -46,23 +46,23 @@ public class ElasticsearchConnection {
     private List<String> hosts;
 
     @Schema(
-        title = "Basic Auth configuration"
+        title = "Basic auth configuration."
     )
     @PluginProperty(dynamic = false)
     private BasicAuth basicAuth;
 
     @Schema(
-        title = "List of http headers to be send on every request",
-        description = "Must be an string with key value separated with `:`, ex: `Authorization: Token XYZ`"
+        title = "List of HTTP headers to be send on every request.",
+        description = "Must be a string with key value separated with `:`, ex: `Authorization: Token XYZ`."
     )
     @PluginProperty(dynamic = true)
     private List<String> headers;
 
     @Schema(
-        title = "Sets the path's prefix for every request used by the http client.",
+        title = "Sets the path's prefix for every request used by the HTTP client.",
         description = "For example, if this is set to `/my/path`, then any client request will become `/my/path/` + endpoint.\n" +
             "In essence, every request's endpoint is prefixed by this `pathPrefix`.\n" +
-            "The path prefix is useful for when Elasticsearch is behind a proxy that provides a base path " +
+            "The path prefix is useful for when ElasticSearch is behind a proxy that provides a base path " +
             "or a proxy that requires all paths to start with '/'; it is not intended for other purposes and " +
             "it should not be supplied in other scenarios."
     )
@@ -76,8 +76,8 @@ public class ElasticsearchConnection {
     private Boolean strictDeprecationMode;
 
     @Schema(
-        title = "Trust all SSL CA certificate",
-        description = "Use this if the server is using a self signed ssl certificate."
+        title = "Trust all SSL CA certificates.",
+        description = "Use this if the server is using a self signed SSL certificate."
     )
     @PluginProperty(dynamic = false)
     private Boolean trustAllSsl;
@@ -88,13 +88,13 @@ public class ElasticsearchConnection {
     @Introspected
     public static class BasicAuth {
         @Schema(
-            title = "Basic Auth username"
+            title = "Basic auth username."
         )
         @PluginProperty(dynamic = true)
         private String username;
 
         @Schema(
-            title = "Basic Auth password"
+            title = "Basic auth password."
         )
         @PluginProperty(dynamic = true)
         private String password;

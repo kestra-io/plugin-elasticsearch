@@ -27,7 +27,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Bulk load documents in elasticsearch using Kestra Internal Storage file"
+    title = "Bulk load documents in ElasticSearch using Kestra Internal Storage file."
 )
 @Plugin(
     examples = {
@@ -44,7 +44,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 )
 public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
     @Schema(
-        title = "The elasticsearch indice"
+        title = "The elasticsearch index."
     )
     @PluginProperty(dynamic = true)
     @NotNull
@@ -63,7 +63,7 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
     private String idKey;
 
     @Schema(
-        title = "Remove idKey from the final document"
+        title = "Remove idKey from the final document."
     )
     @PluginProperty(dynamic = true)
     @Builder.Default
