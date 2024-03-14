@@ -34,14 +34,14 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @NoArgsConstructor
 public abstract class AbstractLoad extends AbstractTask implements RunnableTask<AbstractLoad.Output> {
     @Schema(
-        title = "The source file"
+        title = "The source file."
     )
     @PluginProperty(dynamic = true)
     @NotNull
     private String from;
 
     @Schema(
-        title = "The size of chunk for every bulk request"
+        title = "The chunk size for every bulk request."
     )
     @PluginProperty(dynamic = true)
     @Builder.Default
@@ -103,7 +103,7 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The size of the rows fetch"
+            title = "The size of the rows fetched."
         )
         private Long size;
     }

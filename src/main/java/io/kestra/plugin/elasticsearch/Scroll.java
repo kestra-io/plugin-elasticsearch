@@ -36,8 +36,8 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Scroll over search request",
-    description = "Get all documents from a search request and store it as Kestra Internal Storage file"
+    title = "Scroll over search request.",
+    description = "Get all documents from a search request and store it as Kestra Internal Storage file."
 )
 @Plugin(
     examples = {

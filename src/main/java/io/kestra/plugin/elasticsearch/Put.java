@@ -28,12 +28,12 @@ import jakarta.validation.constraints.NotNull;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Put an Elasticsearch document"
+    title = "Put an ElasticSearch document."
 )
 @Plugin(
     examples = {
         @Example(
-            title = "Put a doc with a Map",
+            title = "Put a document with a Map.",
             code = {
                 "connection:",
                 "  hosts: ",
@@ -46,8 +46,11 @@ import jakarta.validation.constraints.NotNull;
             }
         ),
         @Example(
-            title = "Put a doc from a json string",
+            title = "Put a document from a JSON string.",
             code = {
+                "connection:",
+                "  hosts: ",
+                "   - \"http://localhost:9200\"",
                 "index: \"my_index\"",
                 "key: \"my_id\"",
                 "value: \"{{ outputs.task_id.data | json }}\""
@@ -57,7 +60,7 @@ import jakarta.validation.constraints.NotNull;
 )
 public class Put extends AbstractTask implements RunnableTask<Put.Output> {
     @Schema(
-        title = "The elasticsearch indice"
+        title = "The elasticsearch index."
     )
     @PluginProperty(dynamic = true)
     @NotNull
@@ -70,20 +73,20 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
     private DocWriteRequest.OpType opType;
 
     @Schema(
-        title = "The elasticsearch id"
+        title = "The elasticsearch id."
     )
     @PluginProperty(dynamic = true)
     private String key;
 
     @Schema(
-        title = "The elasticsearch value",
-        description = "Can be a string, in this case, the contentType will be used or a raw Map"
+        title = "The elasticsearch value.",
+        description = "Can be a string. In this case, the contentType will be used or a raw Map."
     )
     @PluginProperty(dynamic = true)
     private Object value;
 
     @Schema(
-        title = "Should this request trigger a refresh",
+        title = "Should this request trigger a refresh.",
         description = "an immediate refresh `IMMEDIATE`, wait for a refresh `WAIT_UNTIL`, or proceed ignore refreshes entirely `NONE`."
     )
     @PluginProperty(dynamic = false)
@@ -91,7 +94,7 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
     private WriteRequest.RefreshPolicy refreshPolicy = WriteRequest.RefreshPolicy.NONE;
 
     @Schema(
-        title = "The content type of `value`"
+        title = "The content type of `value`."
     )
     @PluginProperty(dynamic = false)
     @Builder.Default
@@ -164,7 +167,7 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
         private DocWriteResponse.Result result;
 
         @Schema(
-            title = "The change that occurred to the document."
+            title = "The version of the updated document."
         )
         private Long version;
     }

@@ -23,7 +23,7 @@ import jakarta.validation.constraints.NotNull;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Get an Elasticsearch document"
+    title = "Get an ElasticSearch document."
 )
 @Plugin(
     examples = {
@@ -40,14 +40,14 @@ import jakarta.validation.constraints.NotNull;
 )
 public class Get extends AbstractTask implements RunnableTask<Get.Output> {
     @Schema(
-        title = "The elasticsearch indice"
+        title = "The ElasticSearch index."
     )
     @PluginProperty(dynamic = true)
     @NotNull
     private String index;
 
     @Schema(
-        title = "The elasticsearch id"
+        title = "The ElasticSearch id."
     )
     @PluginProperty(dynamic = true)
     @NotNull

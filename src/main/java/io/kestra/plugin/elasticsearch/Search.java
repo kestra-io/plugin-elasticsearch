@@ -37,8 +37,8 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Send a search request",
-    description = "Get all documents from a search request and store it as outputs"
+    title = "Send a search request.",
+    description = "Get all documents from a search request and store it as outputs."
 )
 @Plugin(
     examples = {
@@ -60,7 +60,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 )
 public class Search extends AbstractSearch implements RunnableTask<Search.Output> {
     @Schema(
-        title = "The way you want to store the data",
+        title = "The way you want to store the data.",
         description = "FETCH_ONE output the first row, "
             + "FETCH output all the rows, "
             + "STORE store all rows in a file, "
@@ -157,30 +157,30 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The size of the rows fetch"
+            title = "The size of the rows fetched."
         )
         private Integer size;
 
         @Schema(
-            title = "The total of the rows fetch without pagination"
+            title = "The total of the rows fetched without pagination."
         )
         private Long total;
 
         @Schema(
-            title = "List containing the fetched data",
+            title = "List containing the fetched data.",
             description = "Only populated if using `fetchType=FETCH`."
         )
         private List<Map<String, Object>> rows;
 
         @Schema(
-            title = "Map containing the first row of fetched data",
+            title = "Map containing the first row of fetched data.",
             description = "Only populated if using `fetchType=FETCH_ONE`."
         )
         private Map<String, Object> row;
 
         @Schema(
-            title = "The uri of stored data",
-            description = "Only populated if using `fetchType=STORE`"
+            title = "The URI of the stored data.",
+            description = "Only populated if using `fetchType=STORE`."
         )
         private URI uri;
     }
