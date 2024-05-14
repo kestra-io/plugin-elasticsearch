@@ -115,7 +115,7 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
             // outputs
             return Output.builder()
                 .size(recordsCount.get())
-                .uri(runContext.putTempFile(tempFile))
+                .uri(runContext.storage().putFile(tempFile))
                 .build();
         }
     }

@@ -130,7 +130,7 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
         }
 
         return Pair.of(
-            runContext.putTempFile(tempFile),
+            runContext.storage().putFile(tempFile),
             searchResponse.getHits().getHits().length
         );
     }

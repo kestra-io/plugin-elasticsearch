@@ -56,7 +56,7 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
 
         try (
             RestHighLevelClient client = this.connection.client(runContext);
-            BufferedReader inputStream = new BufferedReader(new InputStreamReader(runContext.uriToInputStream(from)))
+            BufferedReader inputStream = new BufferedReader(new InputStreamReader(runContext.storage().getFile(from)))
         ) {
             AtomicLong count = new AtomicLong();
             AtomicLong duration = new AtomicLong();
