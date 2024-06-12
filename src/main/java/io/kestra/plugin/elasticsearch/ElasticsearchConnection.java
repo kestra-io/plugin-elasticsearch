@@ -3,7 +3,6 @@ package io.kestra.plugin.elasticsearch;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.utils.VersionProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -124,8 +123,7 @@ public class ElasticsearchConnection {
     private HttpAsyncClientBuilder httpAsyncClientBuilder(RunContext runContext) {
         HttpAsyncClientBuilder builder = HttpAsyncClientBuilder.create();
 
-        VersionProvider versionProvider = runContext.getApplicationContext().getBean(VersionProvider.class);
-        builder.setUserAgent("Kestra/" + versionProvider.getVersion());
+        builder.setUserAgent("Kestra/" + runContext.version());
 
         if (basicAuth != null) {
             final CredentialsProvider basicCredential = new BasicCredentialsProvider();
