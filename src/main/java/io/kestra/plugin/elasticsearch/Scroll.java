@@ -61,7 +61,7 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
     @Override
     public Scroll.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
-        File tempFile = runContext.tempFile(".ion").toFile();
+        File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
 
         try (
             RestHighLevelClient client = this.connection.client(runContext);

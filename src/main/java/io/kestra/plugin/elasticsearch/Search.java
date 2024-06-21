@@ -121,7 +121,7 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
 
 
     protected Pair<URI, Integer> store(RunContext runContext, SearchResponse searchResponse) throws IOException {
-        File tempFile = runContext.tempFile(".ion").toFile();
+        File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
 
         try (var output = new FileOutputStream(tempFile)) {
             Arrays
