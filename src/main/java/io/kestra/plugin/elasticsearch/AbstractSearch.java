@@ -7,8 +7,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.opensearch.action.search.SearchRequest;
-import org.opensearch.common.xcontent.XContentParser;
 import org.opensearch.common.xcontent.XContentType;
+import org.opensearch.core.xcontent.XContentParser;
 import org.opensearch.search.builder.SearchSourceBuilder;
 
 import java.io.IOException;
@@ -37,7 +37,7 @@ public abstract class AbstractSearch extends AbstractTask {
     @Schema(
         title = "The content type of `value`."
     )
-    @PluginProperty(dynamic = false)
+    @PluginProperty
     @Builder.Default
     private XContentType contentType = XContentType.JSON;
 
