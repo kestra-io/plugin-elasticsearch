@@ -5,6 +5,8 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.xcontent.*;
+import org.opensearch.core.xcontent.NamedXContentRegistry;
+import org.opensearch.core.xcontent.XContentParser;
 import org.opensearch.search.SearchModule;
 
 import java.io.IOException;
@@ -28,10 +30,8 @@ public abstract class ElasticsearchService {
 
         SearchModule searchModule = new SearchModule(Settings.EMPTY, Collections.emptyList());
 
-        return XContentFactory.xContent(contentType).createParser(
-            new NamedXContentRegistry(searchModule.getNamedXContents()),
-            LoggingDeprecationHandler.THROW_UNSUPPORTED_OPERATION,
-            json
-        );
+        return contentType
+            .xContent()
+            .createParser(new NamedXContentRegistry(searchModule.getNamedXContents()), LoggingDeprecationHandler.THROW_UNSUPPORTED_OPERATION, json);
     }
 }
