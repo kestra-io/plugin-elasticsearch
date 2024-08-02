@@ -33,7 +33,7 @@ jobs:
       - name: Build the docker-compose stack
         if: ${{ github.event.inputs.skip-test == 'false' || github.event.inputs.skip-test == '' }}
         run: |
-          docker-compose -f docker-compose-ci.yml up -d
+          docker compose -f docker-compose-ci.yml up -d
           sleep 30
           curl -s https://raw.githubusercontent.com/sckott/elastic_data/master/data/gbif_data.json > .github/workflows/gbif_data.json
           curl -H "Content-Type: application/x-ndjson" -XPOST "127.0.0.1:9200/_bulk?pretty" --data-binary @.github/workflows/gbif_data.json > /dev/null
