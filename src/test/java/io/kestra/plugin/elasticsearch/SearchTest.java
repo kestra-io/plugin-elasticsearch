@@ -9,8 +9,6 @@ import io.micronaut.context.annotation.Value;
 import io.kestra.core.junit.annotations.KestraTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
-import org.opensearch.index.query.QueryBuilders;
-import org.opensearch.search.builder.SearchSourceBuilder;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -38,13 +36,17 @@ class SearchTest {
     void run() throws Exception {
         RunContext runContext = runContextFactory.of();
 
-        SearchSourceBuilder query = new SearchSourceBuilder();
-        query.postFilter(QueryBuilders.termQuery("key", "925277090"));
-
         Search task = Search.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .indexes(Collections.singletonList("gbif"))
-            .request(query.toString())
+            .request("""
+                {
+                    "query": {
+                        "term": {
+                            "key": "925277090"
+                        }
+                    }
+                }""")
             .build();
 
         Search.Output run = task.run(runContext);
@@ -57,14 +59,20 @@ class SearchTest {
     void runFetchOne() throws Exception {
         RunContext runContext = runContextFactory.of();
 
-        SearchSourceBuilder query = new SearchSourceBuilder();
-        query.query(QueryBuilders.termQuery("publishingCountry.keyword", "BE"));
-        query.sort("key");
-
         Search task = Search.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .indexes(Collections.singletonList("gbif"))
-            .request(query.toString())
+            .request("""
+                {
+                    "query": {
+                        "term": {
+                            "publishingCountry.keyword": "BE"
+                        }
+                    },
+                    "sort": {
+                        "key": "asc"
+                    }
+                }""")
             .fetchType(FetchType.FETCH_ONE)
             .build();
 
@@ -80,14 +88,17 @@ class SearchTest {
     void runStored() throws Exception {
         RunContext runContext = runContextFactory.of();
 
-        SearchSourceBuilder query = new SearchSourceBuilder();
-        query.query(QueryBuilders.termQuery("publishingCountry.keyword", "BE"));
-        query.sort("key");
-
         Search task = Search.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .indexes(Collections.singletonList("gbif"))
-            .request(query.toString())
+            .request("""
+                {
+                    "query": {
+                        "term": {
+                            "publishingCountry.keyword": "BE"
+                        }
+                    }
+                }""")
             .fetchType(FetchType.STORE)
             .build();
 

@@ -13,10 +13,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.apache.commons.lang3.tuple.Pair;
-import org.opensearch.action.search.SearchRequest;
-import org.opensearch.action.search.SearchResponse;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch.core.SearchRequest;
+import org.opensearch.client.opensearch.core.SearchResponse;
+import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -74,12 +73,13 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
     public Search.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        try (RestHighLevelClient client = this.connection.client(runContext)) {
+        try (RestClientTransport transport = this.connection.client(runContext)) {
+            OpenSearchClient client = new OpenSearchClient(transport);
             // build request
-            SearchRequest request = this.request(runContext);
+            SearchRequest.Builder request = this.request(runContext, transport);
             logger.debug("Starting query: {}", request);
 
-            SearchResponse searchResponse = client.search(request, RequestOptions.DEFAULT);
+            SearchResponse<Map> searchResponse = client.search(request.build(), Map.class);
 
             Output.OutputBuilder outputBuilder = Search.Output.builder();
 
@@ -109,48 +109,46 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
 
             // metrics
             runContext.metric(Counter.of("requests.count", 1));
-            runContext.metric(Counter.of("records", searchResponse.getHits().getHits().length));
-            runContext.metric(Timer.of("requests.duration", Duration.ofNanos(searchResponse.getTook().nanos())));
+            runContext.metric(Counter.of("records", searchResponse.hits().hits().size()));
+            runContext.metric(Timer.of("requests.duration", Duration.ofNanos(searchResponse.took())));
 
             // outputs
             return outputBuilder
-                .total(searchResponse.getHits().getTotalHits().value)
+                .total(searchResponse.hits().total().value())
                 .build();
         }
     }
 
 
-    protected Pair<URI, Integer> store(RunContext runContext, SearchResponse searchResponse) throws IOException {
+    protected Pair<URI, Integer> store(RunContext runContext, SearchResponse<Map> searchResponse) throws IOException {
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
 
         try (var output = new FileOutputStream(tempFile)) {
-            Arrays
-                .stream(searchResponse.getHits().getHits())
-                .forEach(throwConsumer(docs -> FileSerde.write(output, docs.getSourceAsMap())));
+            searchResponse.hits().hits()
+                .forEach(throwConsumer(docs -> FileSerde.write(output, docs.source())));
         }
 
         return Pair.of(
             runContext.storage().putFile(tempFile),
-            searchResponse.getHits().getHits().length
+            searchResponse.hits().hits().size()
         );
     }
 
-    protected Pair<List<Map<String, Object>>, Integer> fetch(SearchResponse searchResponse) {
+    protected Pair<List<Map<String, Object>>, Integer> fetch(SearchResponse<Map> searchResponse) {
         List<Map<String, Object>> result = new ArrayList<>();
 
-        Arrays
-            .stream(searchResponse.getHits().getHits())
-            .forEach(throwConsumer(docs -> result.add(docs.getSourceAsMap())));
+        searchResponse.hits().hits()
+            .forEach(throwConsumer(docs -> result.add(docs.source())));
 
-        return Pair.of(result, searchResponse.getHits().getHits().length);
+        return Pair.of(result, searchResponse.hits().hits().size());
     }
 
-    protected Map<String, Object> fetchOne(SearchResponse searchResponse) {
-        if (searchResponse.getHits().getHits().length == 0) {
+    protected Map<String, Object> fetchOne(SearchResponse<Map> searchResponse) {
+        if (searchResponse.hits().hits().isEmpty()) {
             return null;
         }
 
-        return searchResponse.getHits().getHits()[0].getSourceAsMap();
+        return searchResponse.hits().hits().getFirst().source();
     }
 
     @Builder

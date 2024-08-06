@@ -15,7 +15,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.http.client.entity.EntityBuilder;
 import org.apache.http.entity.ContentType;
 import org.opensearch.client.Response;
-import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
 
 import java.util.Map;
@@ -73,7 +73,7 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
         title = "The http method to use"
     )
     @Builder.Default
-    @PluginProperty(dynamic = false)
+    @PluginProperty
     protected HttpMethod method = HttpMethod.GET;
 
     @Schema(
@@ -98,8 +98,7 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
     @Override
     public Request.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
-        try (RestHighLevelClient client = this.connection.client(runContext)) {
-
+        try (RestClientTransport transport = this.connection.client(runContext)) {
             org.opensearch.client.Request request = new org.opensearch.client.Request(
                 method.name(),
                 runContext.render(endpoint)
@@ -123,7 +122,7 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
 
             logger.debug("Starting request: {}", request);
 
-            Response response = client.getLowLevelClient().performRequest(request);
+            Response response = transport.restClient().performRequest(request);
 
             response.getWarnings().forEach(logger::warn);
 

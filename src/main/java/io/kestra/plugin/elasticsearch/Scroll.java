@@ -10,13 +10,13 @@ import io.kestra.core.serializers.FileSerde;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.opensearch.action.search.ClearScrollRequest;
-import org.opensearch.action.search.SearchRequest;
-import org.opensearch.action.search.SearchResponse;
-import org.opensearch.action.search.SearchScrollRequest;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.common.unit.TimeValue;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.Time;
+import org.opensearch.client.opensearch.core.ClearScrollRequest;
+import org.opensearch.client.opensearch.core.ScrollRequest;
+import org.opensearch.client.opensearch.core.SearchRequest;
+import org.opensearch.client.opensearch.core.SearchResponse;
+import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
 import java.time.Duration;
-import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static io.kestra.core.utils.Rethrow.throwConsumer;
@@ -64,13 +64,14 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
 
         try (
-            RestHighLevelClient client = this.connection.client(runContext);
+            RestClientTransport transport = this.connection.client(runContext);
             OutputStream output = new FileOutputStream(tempFile)
         ) {
+            OpenSearchClient client = new OpenSearchClient(transport);
             // build request
-            SearchRequest request = this.request(runContext);
+            SearchRequest.Builder request = this.request(runContext, transport);
 
-            request.scroll(new TimeValue(60000));
+            request.scroll(new Time.Builder().time("60s").build());
 
             logger.debug("Starting query: {}", request);
 
@@ -82,25 +83,26 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
             String scrollId = null;
 
             try {
-                SearchResponse searchResponse = client.search(request, RequestOptions.DEFAULT);
-                scrollId = searchResponse.getScrollId();
+                SearchResponse<Map> searchResponse = client.search(request.build(), Map.class);
+                scrollId = searchResponse.scrollId();
 
                 do {
-                    requestsDuration.addAndGet(searchResponse.getTook().nanos());
+                    requestsDuration.addAndGet(searchResponse.took());
                     requestsCount.incrementAndGet();
 
-                    Arrays.stream(searchResponse.getHits().getHits())
+                    searchResponse.hits().hits()
                         .forEach(throwConsumer(documentFields -> {
                             recordsCount.incrementAndGet();
-                            FileSerde.write(output, documentFields.getSourceAsMap());
+                            FileSerde.write(output, documentFields.source());
                         }));
 
-                    SearchScrollRequest searchScrollRequest = new SearchScrollRequest()
+                    ScrollRequest searchScrollRequest = new ScrollRequest.Builder()
                         .scrollId(scrollId)
-                        .scroll(new TimeValue(60000));
+                        .scroll(new Time.Builder().time("60s").build())
+                        .build();
 
-                    searchResponse = client.scroll(searchScrollRequest, RequestOptions.DEFAULT);
-                } while (searchResponse.getHits().getHits().length != 0);
+                    searchResponse = client.scroll(searchScrollRequest, Map.class);
+                } while (!searchResponse.hits().hits().isEmpty());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             } finally {
@@ -120,16 +122,17 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
         }
     }
 
-    private void clearScrollId(Logger logger, RestHighLevelClient client, String scrollId) {
+    private void clearScrollId(Logger logger, OpenSearchClient client, String scrollId) {
         if (scrollId == null) {
             return;
         }
 
-        ClearScrollRequest clearScrollRequest = new ClearScrollRequest();
-        clearScrollRequest.addScrollId(scrollId);
+        ClearScrollRequest clearScrollRequest = new ClearScrollRequest.Builder()
+            .scrollId(scrollId)
+            .build();
 
         try {
-            client.clearScroll(clearScrollRequest, RequestOptions.DEFAULT);
+            client.clearScroll(clearScrollRequest);
         } catch (IOException e) {
             logger.warn("Failed to clear scroll", e);
         }

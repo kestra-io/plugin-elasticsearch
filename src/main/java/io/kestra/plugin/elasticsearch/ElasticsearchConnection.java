@@ -1,8 +1,10 @@
 package io.kestra.plugin.elasticsearch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.JacksonMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,18 +23,21 @@ import org.apache.http.message.BasicHeader;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
-import org.opensearch.client.RestHighLevelClient;
 
 import java.net.URI;
 import java.util.List;
 import javax.net.ssl.SSLContext;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import org.opensearch.client.transport.rest_client.RestClientTransport;
 
 @SuperBuilder
 @NoArgsConstructor
 @Getter
 public class ElasticsearchConnection {
+    private static final ObjectMapper MAPPER = JacksonMapper.ofJson(false);
+
     @Schema(
         title = "List of HTTP ElasticSearch servers.",
         description = "Must be an URI like `https://elasticsearch.com:9200` with scheme and port."
@@ -69,14 +74,14 @@ public class ElasticsearchConnection {
     @Schema(
         title = "Whether the REST client should return any response containing at leas one warning header as a failure."
     )
-    @PluginProperty(dynamic = false)
+    @PluginProperty
     private Boolean strictDeprecationMode;
 
     @Schema(
         title = "Trust all SSL CA certificates.",
         description = "Use this if the server is using a self signed SSL certificate."
     )
-    @PluginProperty(dynamic = false)
+    @PluginProperty
     private Boolean trustAllSsl;
 
     @SuperBuilder
@@ -96,7 +101,7 @@ public class ElasticsearchConnection {
         private String password;
     }
 
-    RestHighLevelClient client(RunContext runContext) throws IllegalVariableEvaluationException {
+    RestClientTransport client(RunContext runContext) throws IllegalVariableEvaluationException {
         RestClientBuilder builder = RestClient
             .builder(this.httpHosts(runContext))
             .setHttpClientConfigCallback(httpClientBuilder -> {
@@ -116,7 +121,7 @@ public class ElasticsearchConnection {
             builder.setStrictDeprecationMode(this.getStrictDeprecationMode());
         }
 
-        return new RestHighLevelClient(builder);
+        return new RestClientTransport(builder.build(), new JacksonJsonpMapper(MAPPER));
     }
 
     @SneakyThrows
