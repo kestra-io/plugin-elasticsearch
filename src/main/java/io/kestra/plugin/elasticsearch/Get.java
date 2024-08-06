@@ -8,10 +8,10 @@ import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.opensearch.action.get.GetRequest;
-import org.opensearch.action.get.GetResponse;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch.core.GetRequest;
+import org.opensearch.client.opensearch.core.GetResponse;
+import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
 
 import java.util.Map;
@@ -57,7 +57,7 @@ public class Get extends AbstractTask implements RunnableTask<Get.Output> {
         title = "Sets the version",
         description = "which will cause the get operation to only be performed if a matching version exists and no changes happened on the doc since then."
     )
-    @PluginProperty(dynamic = false)
+    @PluginProperty
     @NotNull
     private Long version;
 
@@ -65,12 +65,13 @@ public class Get extends AbstractTask implements RunnableTask<Get.Output> {
     @Override
     public Get.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
-        try (RestHighLevelClient client = this.connection.client(runContext)) {
-
+        try (RestClientTransport transport = this.connection.client(runContext)) {
+            OpenSearchClient client = new OpenSearchClient(transport);
             String index = runContext.render(this.index);
             String key = runContext.render(this.key);
 
-            GetRequest request = new GetRequest(index, key);
+            var request = new GetRequest.Builder();
+            request.index(index).id(key);
 
             if (this.version != null) {
                 request.version(this.version);
@@ -84,11 +85,11 @@ public class Get extends AbstractTask implements RunnableTask<Get.Output> {
                 request.routing(this.routing);
             }
 
-            GetResponse response = client.get(request, RequestOptions.DEFAULT);
+            GetResponse<Map> response = client.get(request.build(), Map.class);
             logger.debug("Getting doc: {}", request);
 
             return Output.builder()
-                .row(response.getSourceAsMap())
+                .row(response.source())
                 .build();
         }
     }

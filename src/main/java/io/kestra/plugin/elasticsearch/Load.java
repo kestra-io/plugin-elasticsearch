@@ -7,15 +7,16 @@ import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
+import io.kestra.plugin.elasticsearch.model.OpType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.opensearch.action.DocWriteRequest;
-import org.opensearch.action.index.IndexRequest;
 
 import java.io.BufferedReader;
 import java.util.Map;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 
@@ -43,6 +44,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
     }
 )
 public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
+
     @Schema(
         title = "The elasticsearch index."
     )
@@ -53,8 +55,8 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
     @Schema(
         title = "Sets the type of operation to perform."
     )
-    @PluginProperty(dynamic = false)
-    private DocWriteRequest.OpType opType;
+    @PluginProperty
+    private OpType opType;
 
     @Schema(
         title = "Use this key as id."
@@ -71,20 +73,21 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
 
     @SuppressWarnings("unchecked")
     @Override
-    protected Flux<DocWriteRequest<?>> source(RunContext runContext, BufferedReader inputStream) throws IllegalVariableEvaluationException {
+    protected Flux<BulkOperation> source(RunContext runContext, BufferedReader inputStream) throws IllegalVariableEvaluationException {
         return Flux
             .create(FileSerde.reader(inputStream), FluxSink.OverflowStrategy.BUFFER)
             .map(throwFunction(o -> {
                 Map<String, ?> values = (Map<String, ?>) o;
 
-                IndexRequest indexRequest = new IndexRequest();
+                var indexRequest = new IndexOperation.Builder<Map<String, ?>>();
                 if (this.index != null) {
                     indexRequest.index(runContext.render(this.getIndex()));
                 }
 
-                if (this.opType != null) {
-                    indexRequest.opType(this.opType);
-                }
+                //FIXME
+//                if (this.opType != null) {
+//                    indexRequest.opType(this.opType.to());
+//                }
 
                 if (this.idKey != null) {
                     String idKey = runContext.render(this.idKey);
@@ -96,9 +99,11 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
                     }
                 }
 
-                indexRequest.source(values);
+                indexRequest.document(values);
 
-                return indexRequest;
+                var bulkOperation = new BulkOperation.Builder();
+                bulkOperation.index(indexRequest.build());
+                return bulkOperation.build();
             }));
     }
 }

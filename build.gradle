@@ -52,7 +52,10 @@ dependencies {
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
 
     // Libs
-    api (group: 'org.opensearch.client', name: 'opensearch-rest-high-level-client') {
+    api (group: 'org.opensearch.client', name: 'opensearch-java') {
+        exclude group: 'org.apache.logging.log4j'
+    }
+    api (group: 'org.opensearch.client', name: 'opensearch-rest-client') {
         exclude group: 'org.apache.logging.log4j'
     }
 

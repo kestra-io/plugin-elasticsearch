@@ -1,22 +1,25 @@
 package io.kestra.plugin.elasticsearch;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.plugin.elasticsearch.model.OpType;
+import io.kestra.plugin.elasticsearch.model.RefreshPolicy;
+import io.kestra.plugin.elasticsearch.model.XContentType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.opensearch.action.DocWriteRequest;
-import org.opensearch.action.DocWriteResponse;
-import org.opensearch.action.index.IndexRequest;
-import org.opensearch.action.index.IndexResponse;
-import org.opensearch.action.support.WriteRequest;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.common.xcontent.XContentType;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.Result;
+import org.opensearch.client.opensearch.core.IndexRequest;
+import org.opensearch.client.opensearch.core.IndexResponse;
+import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
 
 import java.util.Map;
@@ -59,6 +62,8 @@ import jakarta.validation.constraints.NotNull;
     }
 )
 public class Put extends AbstractTask implements RunnableTask<Put.Output> {
+    private static ObjectMapper MAPPER = JacksonMapper.ofJson();
+
     @Schema(
         title = "The elasticsearch index."
     )
@@ -69,8 +74,8 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
     @Schema(
         title = "Sets the type of operation to perform."
     )
-    @PluginProperty(dynamic = false)
-    private DocWriteRequest.OpType opType;
+    @PluginProperty
+    private OpType opType;
 
     @Schema(
         title = "The elasticsearch id."
@@ -89,26 +94,26 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
         title = "Should this request trigger a refresh.",
         description = "an immediate refresh `IMMEDIATE`, wait for a refresh `WAIT_UNTIL`, or proceed ignore refreshes entirely `NONE`."
     )
-    @PluginProperty(dynamic = false)
+    @PluginProperty
     @Builder.Default
-    private WriteRequest.RefreshPolicy refreshPolicy = WriteRequest.RefreshPolicy.NONE;
+    private RefreshPolicy refreshPolicy = RefreshPolicy.NONE;
 
     @Schema(
         title = "The content type of `value`."
     )
-    @PluginProperty(dynamic = false)
+    @PluginProperty
     @Builder.Default
     private XContentType contentType = XContentType.JSON;
 
     @Override
     public Put.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
-        try (RestHighLevelClient client = this.connection.client(runContext)) {
-
+        try (RestClientTransport transport = this.connection.client(runContext)) {
+            OpenSearchClient client = new OpenSearchClient(transport);
             String index = runContext.render(this.index);
             String key = runContext.render(this.key);
 
-            IndexRequest request = new IndexRequest();
+            var request = new IndexRequest.Builder<Map>();
             request.index(index);
 
 
@@ -119,11 +124,11 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
             }
 
             if (this.opType != null) {
-                request.opType(this.opType);
+                request.opType(this.opType.to());
             }
 
             if (this.refreshPolicy != null) {
-                request.setRefreshPolicy(this.refreshPolicy);
+                request.refresh(this.refreshPolicy.to());
             }
 
             if (this.routing != null) {
@@ -132,22 +137,24 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
 
             logger.debug("Putting doc: {}", request);
 
-            IndexResponse response = client.index(request, RequestOptions.DEFAULT);
+            IndexResponse response = client.index(request.build());
 
             return Output.builder()
-                .id(response.getId())
-                .result(response.getResult())
-                .version(response.getVersion())
+                .id(response.id())
+                .result(response.result())
+                .version(response.version())
                 .build();
         }
     }
 
     @SuppressWarnings("unchecked")
-    private void source(RunContext runContext, IndexRequest request) throws IllegalVariableEvaluationException {
-        if (this.value instanceof String) {
-            request.source(runContext.render((String) this.value), contentType);
-        } else if (this.value instanceof Map) {
-            request.source(runContext.render((Map<String, Object>) this.value));
+    private void source(RunContext runContext, IndexRequest.Builder<Map> request) throws IllegalVariableEvaluationException, JsonProcessingException {
+        if (this.value instanceof String valueStr) {
+            Map<?, ?> document = MAPPER.readValue(runContext.render(valueStr), Map.class);
+            // FIXME contentType
+            request.document(document);
+        } else if (this.value instanceof Map valueMap) {
+            request.document(runContext.render(valueMap));
         } else {
             throw new IllegalVariableEvaluationException("Invalid value type '" + this.value.getClass() + "'");
         }
@@ -164,7 +171,7 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
         @Schema(
             title = "The change that occurred to the document."
         )
-        private DocWriteResponse.Result result;
+        private Result result;
 
         @Schema(
             title = "The version of the updated document."

@@ -9,11 +9,11 @@ import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.opensearch.action.DocWriteRequest;
-import org.opensearch.action.bulk.BulkRequest;
-import org.opensearch.action.bulk.BulkResponse;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch.core.BulkRequest;
+import org.opensearch.client.opensearch.core.BulkResponse;
+import org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
 
 import java.io.BufferedReader;
@@ -47,7 +47,7 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
     @Builder.Default
     private Integer chunk = 1000;
 
-    abstract protected Flux<DocWriteRequest<?>> source(RunContext runContext, BufferedReader inputStream) throws IllegalVariableEvaluationException, IOException;
+    abstract protected Flux<BulkOperation> source(RunContext runContext, BufferedReader inputStream) throws IllegalVariableEvaluationException, IOException;
 
     @Override
     public AbstractLoad.Output run(RunContext runContext) throws Exception {
@@ -55,9 +55,10 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
         URI from = new URI(runContext.render(this.from));
 
         try (
-            RestHighLevelClient client = this.connection.client(runContext);
+            RestClientTransport transport = this.connection.client(runContext);
             BufferedReader inputStream = new BufferedReader(new InputStreamReader(runContext.storage().getFile(from)))
         ) {
+            OpenSearchClient client = new OpenSearchClient(transport);
             AtomicLong count = new AtomicLong();
             AtomicLong duration = new AtomicLong();
 
@@ -67,16 +68,16 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
                 })
                 .buffer(this.chunk, this.chunk)
                 .map(throwFunction(indexRequests -> {
-                    BulkRequest bulkRequest = new BulkRequest();
-                    indexRequests.forEach(bulkRequest::add);
-                    
-                    return client.bulk(bulkRequest, RequestOptions.DEFAULT);
+                    var bulkRequest = new BulkRequest.Builder();
+                    bulkRequest.operations(indexRequests);
+
+                    return client.bulk(bulkRequest.build());
                 }))
                 .doOnNext(bulkItemResponse -> {
-                    duration.addAndGet(bulkItemResponse.getTook().nanos());
+                    duration.addAndGet(bulkItemResponse.took());
 
-                    if (bulkItemResponse.hasFailures()) {
-                        throw new RuntimeException("Indexer failed bulk '" + bulkItemResponse.buildFailureMessage() + "'");
+                    if (bulkItemResponse.errors()) {
+                        throw new RuntimeException("Indexer failed bulk:\n " + logError(bulkItemResponse));
                     }
                 });
 
@@ -97,6 +98,21 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
                 .size(count.get())
                 .build();
         }
+    }
+
+    private String logError(BulkResponse bulkResponse) {
+        StringBuilder builder = new StringBuilder();
+        bulkResponse.items().forEach(
+            responseItem -> {
+                if (responseItem.error() != null) {
+                    builder
+                        .append(responseItem.index()).append(": ")
+                        .append(responseItem.status()).append(" - ")
+                        .append(responseItem.error().reason()).append('\n');
+                }
+            }
+        );
+        return builder.toString();
     }
 
     @Builder

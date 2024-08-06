@@ -3,14 +3,8 @@ package io.kestra.plugin.elasticsearch;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
-import org.opensearch.common.settings.Settings;
-import org.opensearch.common.xcontent.*;
-import org.opensearch.core.xcontent.NamedXContentRegistry;
-import org.opensearch.core.xcontent.XContentParser;
-import org.opensearch.search.SearchModule;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Map;
 
 public abstract class ElasticsearchService {
@@ -23,15 +17,5 @@ public abstract class ElasticsearchService {
         } else {
             throw new IllegalVariableEvaluationException("Invalid value type '" + value.getClass() + "'");
         }
-    }
-
-    public static XContentParser toXContentParser(RunContext runContext, Object value, XContentType contentType) throws IllegalVariableEvaluationException, IOException {
-        String json = toBody(runContext, value);
-
-        SearchModule searchModule = new SearchModule(Settings.EMPTY, Collections.emptyList());
-
-        return contentType
-            .xContent()
-            .createParser(new NamedXContentRegistry(searchModule.getNamedXContents()), LoggingDeprecationHandler.THROW_UNSUPPORTED_OPERATION, json);
     }
 }
