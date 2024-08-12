@@ -13,12 +13,12 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.util.Map;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
@@ -73,9 +73,8 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
 
     @SuppressWarnings("unchecked")
     @Override
-    protected Flux<BulkOperation> source(RunContext runContext, BufferedReader inputStream) throws IllegalVariableEvaluationException {
-        return Flux
-            .create(FileSerde.reader(inputStream), FluxSink.OverflowStrategy.BUFFER)
+    protected Flux<BulkOperation> source(RunContext runContext, BufferedReader inputStream) throws IllegalVariableEvaluationException, IOException {
+        return FileSerde.readAll(inputStream)
             .map(throwFunction(o -> {
                 Map<String, ?> values = (Map<String, ?>) o;
 
