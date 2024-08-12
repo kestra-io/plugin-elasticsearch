@@ -6,6 +6,7 @@ import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.executions.metrics.Timer;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.FileSerde;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -56,7 +57,7 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
 
         try (
             RestClientTransport transport = this.connection.client(runContext);
-            BufferedReader inputStream = new BufferedReader(new InputStreamReader(runContext.storage().getFile(from)))
+            BufferedReader inputStream = new BufferedReader(new InputStreamReader(runContext.storage().getFile(from)), FileSerde.BUFFER_SIZE)
         ) {
             OpenSearchClient client = new OpenSearchClient(transport);
             AtomicLong count = new AtomicLong();
