@@ -18,17 +18,14 @@ import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static io.kestra.core.utils.Rethrow.throwConsumer;
 
 @SuperBuilder
 @ToString
@@ -65,7 +62,7 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
 
         try (
             RestClientTransport transport = this.connection.client(runContext);
-            OutputStream output = new FileOutputStream(tempFile)
+            Writer output = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)
         ) {
             OpenSearchClient client = new OpenSearchClient(transport);
             // build request
@@ -90,11 +87,10 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
                     requestsDuration.addAndGet(searchResponse.took());
                     requestsCount.incrementAndGet();
 
-                    searchResponse.hits().hits()
-                        .forEach(throwConsumer(documentFields -> {
-                            recordsCount.incrementAndGet();
-                            FileSerde.write(output, documentFields.source());
-                        }));
+                    Flux<Map> hitFlux = Flux.fromIterable(searchResponse.hits().hits()).map(hit -> hit.source());
+                    Mono<Long> longMono = FileSerde.writeAll(output, hitFlux);
+
+                    recordsCount.addAndGet(longMono.block());
 
                     ScrollRequest searchScrollRequest = new ScrollRequest.Builder()
                         .scrollId(scrollId)
