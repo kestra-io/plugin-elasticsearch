@@ -18,10 +18,10 @@ import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -100,10 +100,10 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
                     break;
 
                 case STORE:
-                    Pair<URI, Integer> store = this.store(runContext, searchResponse);
+                    Pair<URI, Long> store = this.store(runContext, searchResponse);
                     outputBuilder
                         .uri(store.getLeft())
-                        .size(store.getRight());
+                        .size(store.getRight().intValue());
                     break;
             }
 
@@ -120,18 +120,18 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
     }
 
 
-    protected Pair<URI, Integer> store(RunContext runContext, SearchResponse<Map> searchResponse) throws IOException {
+    protected Pair<URI, Long> store(RunContext runContext, SearchResponse<Map> searchResponse) throws IOException {
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
 
-        try (var output = new FileOutputStream(tempFile)) {
-            searchResponse.hits().hits()
-                .forEach(throwConsumer(docs -> FileSerde.write(output, docs.source())));
-        }
+        try (var output = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)) {
+            Flux<Map> hitFlux = Flux.fromIterable(searchResponse.hits().hits()).map(hit -> hit.source());
+            Long count = FileSerde.writeAll(output, hitFlux).block();
 
-        return Pair.of(
-            runContext.storage().putFile(tempFile),
-            searchResponse.hits().hits().size()
-        );
+            return Pair.of(
+                runContext.storage().putFile(tempFile),
+                count
+            );
+        }
     }
 
     protected Pair<List<Map<String, Object>>, Integer> fetch(SearchResponse<Map> searchResponse) {
