@@ -72,7 +72,7 @@ public class ElasticsearchConnection {
     private String pathPrefix;
 
     @Schema(
-        title = "Whether the REST client should return any response containing at leas one warning header as a failure."
+        title = "Whether the REST client should return any response containing at least one warning header as a failure."
     )
     @PluginProperty
     private Boolean strictDeprecationMode;
