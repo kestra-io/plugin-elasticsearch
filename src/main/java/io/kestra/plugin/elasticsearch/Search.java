@@ -42,18 +42,25 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Plugin(
     examples = {
         @Example(
-            code = {
-                "connection:",
-                "  hosts: ",
-                "   - \"http://localhost:9200\"",
-                "indexes:",
-                " - \"my_index\"",
-                "request:",
-                "  query: ",
-                "    term:",
-                "      name:",
-                "        value: 'john'",
-            }
+            full = true,
+            code = """
+                id: elasticsearch_search
+                namespace: company.team
+                
+                tasks:
+                  - id: search
+                    type: io.kestra.plugin.elasticsearch.Search
+                    connection:
+                      hosts: 
+                        - "http://localhost:9200"
+                    indexes:
+                      - "my_index"
+                    request:
+                      query: 
+                        term:
+                          name:
+                            value: 'john'
+                """
         )
     }
 )

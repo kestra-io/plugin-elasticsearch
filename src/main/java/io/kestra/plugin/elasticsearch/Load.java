@@ -33,13 +33,24 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Plugin(
     examples = {
         @Example(
-            code = {
-                "connection:",
-                "  hosts: ",
-                "   - \"http://localhost:9200\"",
-                "from: \"{{ inputs.file }}\"",
-                "index: \"my_index\"",
-            }
+            full = true,
+            code = """
+                id: elasticsearch_load
+                namespace: company.team
+                
+                inputs:
+                  - id: file
+                    type: FILE
+
+                tasks:
+                  - id: load
+                    type: io.kestra.plugin.elasticsearch.Load
+                    connection:
+                      hosts: 
+                       - "http://localhost:9200"
+                    from: "{{ inputs.file }}"
+                    index: "my_index"
+                """
         )
     }
 )

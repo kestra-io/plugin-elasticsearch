@@ -34,50 +34,71 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
     examples = {
         @Example(
             title = "Inserting a document in an index using POST request.",
-            code = {
-                "connection:",
-                "  hosts: ",
-                "   - \"http://localhost:9200\"",
-                "method: \"POST\"",
-                "endpoint: \"my_index/_doc/john\"",
-                "body:",
-                "  name: \"john\""
-            }
+            full = true,
+            code = """
+                id: elasticsearch_request
+                namespace: company.team
+
+                tasks:
+                  - id: request_post
+                    type: io.kestra.plugin.elasticsearch.Request
+                    connection:
+                      hosts: 
+                       - "http://localhost:9200"
+                    method: "POST"
+                    endpoint: "my_index/_doc/john"
+                    body:
+                      name: "john"
+                """
         ),
         @Example(
             title = "Searching for documents using GET request.",
-            code = {
-                "connection:",
-                "  hosts: ",
-                "   - \"http://localhost:9200\"",
-                "method: \"GET\"",
-                "endpoint: \"my_index/_search\"",
-                "parameters:",
-                "  q: \"name:\\\"John Doe\\\""
-            }
+            full = true,
+            code = """
+                id: elasticsearch_request
+                namespace: company.team
+
+                tasks:
+                  - id: request_get
+                    type: io.kestra.plugin.elasticsearch.Request
+                    connection:
+                      hosts: 
+                       - "http://localhost:9200"
+                    method: "GET"
+                    endpoint: "my_index/_search"
+                    parameters:
+                      q: "name:\"John Doe\""
+                """
         ),
         @Example(
             title = "Deleting document using DELETE request.",
-            code = {
-                "connection:",
-                "  hosts: ",
-                "   - \"http://localhost:9200\"",
-                "method: \"DELETE\"",
-                "endpoint: \"my_index/_doc/<_id>\"",
-            }
+            full = true,
+            code = """
+                id: elasticsearch_request
+                namespace: company.team
+
+                tasks:
+                  - id: request_delete
+                    type: io.kestra.plugin.elasticsearch.Request
+                    connection:
+                      hosts:
+                       - "http://localhost:9200"
+                    method: "DELETE"
+                    endpoint: "my_index/_doc/<_id>"
+                """
         ),
     }
 )
 public class Request extends AbstractTask implements RunnableTask<Request.Output> {
     @Schema(
-        title = "The http method to use"
+        title = "The http method to use."
     )
     @Builder.Default
     @PluginProperty
     protected HttpMethod method = HttpMethod.GET;
 
     @Schema(
-        title = "The path of the request (without scheme, host, port, or prefix)"
+        title = "The path of the request (without scheme, host, port, or prefix)."
     )
     @PluginProperty(dynamic = true)
     protected String endpoint;
@@ -89,8 +110,8 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
     protected Map<String, String> parameters;
 
     @Schema(
-        title = "The full body",
-        description = "Can be a json string or raw Map that will be converted to json"
+        title = "The full body.",
+        description = "Can be a JSON string or raw Map that will be converted to json."
     )
     @PluginProperty(dynamic = true)
     protected Object body;

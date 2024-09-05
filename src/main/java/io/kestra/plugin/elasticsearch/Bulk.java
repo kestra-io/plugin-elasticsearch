@@ -38,12 +38,23 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Plugin(
     examples = {
         @Example(
-            code = {
-                "connection:",
-                "  hosts: ",
-                "   - \"http://localhost:9200\"",
-                "from: \"{{ inputs.file }}\""
-            }
+            full = true,
+            code = """
+                id: elasticsearch_bulk_load
+                namespace: company.team
+
+                inputs:
+                  - id: file
+                    type: FILE
+
+                tasks:
+                  - id: bulk_load
+                    type: io.kestra.plugin.elasticsearch.Bulk
+                    connection:
+                      hosts: 
+                       - "http://localhost:9200"
+                    from: "{{ inputs.file }}"
+                """
         )
     }
 )
