@@ -28,13 +28,20 @@ import jakarta.validation.constraints.NotNull;
 @Plugin(
     examples = {
         @Example(
-            code = {
-                "connection:",
-                "  hosts: ",
-                "   - \"http://localhost:9200\"",
-                "index: \"my_index\"",
-                "key: \"my_id\"",
-            }
+            full = true,
+            code = """
+                id: elasticsearch_get
+                namespace: company.team
+
+                tasks:
+                  - id: get
+                    type: io.kestra.plugin.elasticsearch.Get
+                    connection:
+                      hosts: 
+                       - "http://localhost:9200"
+                    index: "my_index"
+                    key: "my_id"
+                """
         )
     }
 )

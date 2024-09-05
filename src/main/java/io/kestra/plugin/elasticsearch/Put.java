@@ -37,27 +37,46 @@ import jakarta.validation.constraints.NotNull;
     examples = {
         @Example(
             title = "Put a document with a Map.",
-            code = {
-                "connection:",
-                "  hosts: ",
-                "   - \"http://localhost:9200\"",
-                "index: \"my_index\"",
-                "key: \"my_id\"",
-                "value:",
-                "  name: \"John Doe\"",
-                "  city: \"Paris\"",
-            }
+            full = true,
+            code = """
+                id: elasticsearch_put
+                namespace: company.team
+                
+                tasks:
+                  - id: put
+                    type: io.kestra.plugin.elasticsearch.Put
+                    connection:
+                      hosts: 
+                       - "http://localhost:9200"
+                    index: "my_index"
+                    key: "my_id"
+                    value:
+                      name: "John Doe"
+                      city: "Paris"
+                """
         ),
         @Example(
             title = "Put a document from a JSON string.",
-            code = {
-                "connection:",
-                "  hosts: ",
-                "   - \"http://localhost:9200\"",
-                "index: \"my_index\"",
-                "key: \"my_id\"",
-                "value: \"{{ outputs.task_id.data | json }}\""
-            }
+            full = true,
+            code = """
+                id: elasticsearch_put
+                namespace: company.team
+                
+                inputs:
+                  - id: value
+                    type: JSON
+                    defaults: {"name": "John Doe", "city": "Paris"}
+                    
+                tasks:
+                  - id: put
+                    type: io.kestra.plugin.elasticsearch.Put
+                    connection:
+                      hosts: 
+                       - "http://localhost:9200"
+                    index: "my_index"
+                    key: "my_id"
+                    value: "{{ inputs.value }}"
+                """
         ),
     }
 )

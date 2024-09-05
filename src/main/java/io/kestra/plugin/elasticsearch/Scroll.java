@@ -39,18 +39,25 @@ import java.util.concurrent.atomic.AtomicLong;
 @Plugin(
     examples = {
         @Example(
-            code = {
-                "connection:",
-                "  hosts: ",
-                "   - \"http://localhost:9200\"",
-                "indexes:",
-                " - \"my_index\"",
-                "request:",
-                "  query: ",
-                "    term:",
-                "      name:",
-                "        value: 'john'",
-            }
+            full = true,
+            code = """
+                id: elasticsearch_scroll
+                namespace: company.team
+
+                tasks:
+                  - id: scroll
+                    type: io.kestra.plugin.elasticsearch.Scroll
+                    connection:
+                      hosts: 
+                        - "http://localhost:9200"
+                    indexes:
+                      - "my_index"
+                    request:
+                      query: 
+                        term:
+                          name:
+                            value: 'john'
+                """
         )
     }
 )
