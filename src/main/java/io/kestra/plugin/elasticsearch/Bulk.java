@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.DeleteOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
@@ -51,7 +52,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
                   - id: bulk_load
                     type: io.kestra.plugin.elasticsearch.Bulk
                     connection:
-                      hosts: 
+                      hosts:
                        - "http://localhost:9200"
                     from: "{{ inputs.file }}"
                 """
@@ -87,12 +88,12 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                         bulkOperation.index(indexOperation.build());
                         break;
                     case "create":
-                        var createOperation = new IndexOperation.Builder<>()
+                        var createOperation = new CreateOperation.Builder<>()
                             .id((String) value.get("_id"))
                             .index((String) value.get("_index"))
                             .ifPrimaryTerm(0L) //FIXME opType
                             .document(parseline(input.readLine()));
-                        bulkOperation.index(createOperation.build());
+                        bulkOperation.create(createOperation.build());
                         break;
                     case "update":
                         var updateOperation = new UpdateOperation.Builder<>()
