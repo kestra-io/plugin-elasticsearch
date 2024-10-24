@@ -52,12 +52,13 @@ dependencies {
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
 
     // Libs
-    api (group: 'org.opensearch.client', name: 'opensearch-java') {
+    api ("co.elastic.clients:elasticsearch-java:$elasticsearchVersion") {
         exclude group: 'org.apache.logging.log4j'
     }
-    api (group: 'org.opensearch.client', name: 'opensearch-rest-client') {
+    api ("org.elasticsearch.client:elasticsearch-rest-client:$elasticsearchVersion") {
         exclude group: 'org.apache.logging.log4j'
     }
+    compileOnly ("com.fasterxml.jackson.core:jackson-databind")
 
     // Logs
     compileOnly'org.slf4j:slf4j-api'

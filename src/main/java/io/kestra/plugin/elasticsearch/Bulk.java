@@ -1,5 +1,6 @@
 package io.kestra.plugin.elasticsearch;
 
+import co.elastic.clients.elasticsearch.core.bulk.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.models.annotations.Example;
@@ -13,11 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
-import org.opensearch.client.opensearch.core.bulk.BulkOperation;
-import org.opensearch.client.opensearch.core.bulk.CreateOperation;
-import org.opensearch.client.opensearch.core.bulk.DeleteOperation;
-import org.opensearch.client.opensearch.core.bulk.IndexOperation;
-import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 
@@ -99,8 +95,10 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                         var updateOperation = new UpdateOperation.Builder<>()
                             .id((String) value.get("_id"))
                             .index((String) value.get("_index"))
-                            .docAsUpsert(true)
-                            .document(parseline(input.readLine()));
+                            .action(new UpdateAction.Builder<>()
+                                    .docAsUpsert(true)
+                                    .doc(parseline(input.readLine()))
+                                    .build());
                         bulkOperation.update(updateOperation.build());
                         break;
                     case "delete":

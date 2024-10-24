@@ -1,5 +1,10 @@
 package io.kestra.plugin.elasticsearch;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.Result;
+import co.elastic.clients.elasticsearch.core.IndexRequest;
+import co.elastic.clients.elasticsearch.core.IndexResponse;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -15,11 +20,6 @@ import io.kestra.plugin.elasticsearch.model.XContentType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch._types.Result;
-import org.opensearch.client.opensearch.core.IndexRequest;
-import org.opensearch.client.opensearch.core.IndexResponse;
-import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
 
 import java.util.Map;
@@ -128,7 +128,7 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
     public Put.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
         try (RestClientTransport transport = this.connection.client(runContext)) {
-            OpenSearchClient client = new OpenSearchClient(transport);
+            ElasticsearchClient client = new ElasticsearchClient(transport);
             String index = runContext.render(this.index);
             String key = runContext.render(this.key);
 

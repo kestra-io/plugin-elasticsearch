@@ -1,5 +1,7 @@
 package io.kestra.plugin.elasticsearch;
 
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
@@ -21,16 +23,14 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.ssl.SSLContextBuilder;
-import org.opensearch.client.RestClient;
-import org.opensearch.client.RestClientBuilder;
 
 import java.net.URI;
 import java.util.List;
 import javax.net.ssl.SSLContext;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import org.opensearch.client.json.jackson.JacksonJsonpMapper;
-import org.opensearch.client.transport.rest_client.RestClientTransport;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 
 @SuperBuilder
 @NoArgsConstructor
@@ -50,7 +50,7 @@ public class ElasticsearchConnection {
     @Schema(
         title = "Basic auth configuration."
     )
-    @PluginProperty(dynamic = false)
+    @PluginProperty
     private BasicAuth basicAuth;
 
     @Schema(

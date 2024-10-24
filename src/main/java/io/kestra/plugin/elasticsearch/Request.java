@@ -1,5 +1,6 @@
 package io.kestra.plugin.elasticsearch;
 
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.google.common.base.Charsets;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -14,8 +15,7 @@ import lombok.experimental.SuperBuilder;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.client.entity.EntityBuilder;
 import org.apache.http.entity.ContentType;
-import org.opensearch.client.Response;
-import org.opensearch.client.transport.rest_client.RestClientTransport;
+import org.elasticsearch.client.Response;
 import org.slf4j.Logger;
 
 import java.util.Map;
@@ -120,7 +120,7 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
     public Request.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
         try (RestClientTransport transport = this.connection.client(runContext)) {
-            org.opensearch.client.Request request = new org.opensearch.client.Request(
+            org.elasticsearch.client.Request request = new org.elasticsearch.client.Request(
                 method.name(),
                 runContext.render(endpoint)
             );

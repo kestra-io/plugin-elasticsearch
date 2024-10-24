@@ -1,5 +1,10 @@
 package io.kestra.plugin.elasticsearch;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.Time;
+import co.elastic.clients.elasticsearch.core.*;
+import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.executions.metrics.Counter;
@@ -10,13 +15,6 @@ import io.kestra.core.serializers.FileSerde;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch._types.Time;
-import org.opensearch.client.opensearch.core.ClearScrollRequest;
-import org.opensearch.client.opensearch.core.ScrollRequest;
-import org.opensearch.client.opensearch.core.SearchRequest;
-import org.opensearch.client.opensearch.core.SearchResponse;
-import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -68,12 +66,12 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
 
         try (
-            RestClientTransport transport = this.connection.client(runContext);
-            Writer output = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)
+                RestClientTransport transport = this.connection.client(runContext);
+                Writer output = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)
         ) {
-            OpenSearchClient client = new OpenSearchClient(transport);
+            ElasticsearchClient client = new ElasticsearchClient(transport);
             // build request
-            SearchRequest.Builder request = this.request(runContext, transport);
+            SearchRequest.Builder request = this.request(runContext);
 
             request.scroll(new Time.Builder().time("60s").build());
 
@@ -88,24 +86,28 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
 
             try {
                 SearchResponse<Map> searchResponse = client.search(request.build(), Map.class);
+                HitsMetadata<Map> hits = searchResponse.hits();
+                long took = searchResponse.took();
                 scrollId = searchResponse.scrollId();
 
                 do {
-                    requestsDuration.addAndGet(searchResponse.took());
+                    requestsDuration.addAndGet(took);
                     requestsCount.incrementAndGet();
 
-                    Flux<Map> hitFlux = Flux.fromIterable(searchResponse.hits().hits()).map(hit -> hit.source());
+                    Flux<Map> hitFlux = Flux.fromIterable(hits.hits()).map(hit -> hit.source());
                     Mono<Long> longMono = FileSerde.writeAll(output, hitFlux);
 
-                    recordsCount.addAndGet(longMono.block());
+                    recordsCount.addAndGet(longMono.blockOptional().orElse(0L));
 
                     ScrollRequest searchScrollRequest = new ScrollRequest.Builder()
                         .scrollId(scrollId)
                         .scroll(new Time.Builder().time("60s").build())
                         .build();
 
-                    searchResponse = client.scroll(searchScrollRequest, Map.class);
-                } while (!searchResponse.hits().hits().isEmpty());
+                    ScrollResponse<Map> scrollResponse = client.scroll(searchScrollRequest, Map.class);
+                    hits = scrollResponse.hits();
+                    took = scrollResponse.took();
+                } while (!hits.hits().isEmpty());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             } finally {
@@ -125,7 +127,7 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
         }
     }
 
-    private void clearScrollId(Logger logger, OpenSearchClient client, String scrollId) {
+    private void clearScrollId(Logger logger, ElasticsearchClient client, String scrollId) {
         if (scrollId == null) {
             return;
         }
