@@ -1,5 +1,8 @@
 package io.kestra.plugin.elasticsearch;
 
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.json.JsonpMapper;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
@@ -10,10 +13,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.json.stream.JsonParser;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.opensearch.client.json.JsonpMapper;
-import org.opensearch.client.opensearch._types.query_dsl.Query;
-import org.opensearch.client.opensearch.core.SearchRequest;
-import org.opensearch.client.transport.OpenSearchTransport;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -44,20 +43,22 @@ public abstract class AbstractSearch extends AbstractTask {
     private Object request;
 
     @Schema(
-        title = "The content type of `value`."
+        title = "The content type of `value`.",
+        description = "Not used anymore."
     )
     @PluginProperty
     @Builder.Default
-    private XContentType contentType = XContentType.JSON; //FIXME
+    @Deprecated
+    private XContentType contentType = XContentType.JSON;
 
-    protected SearchRequest.Builder request(RunContext runContext, OpenSearchTransport transport) throws IllegalVariableEvaluationException, IOException {
+    protected SearchRequest.Builder request(RunContext runContext) throws IllegalVariableEvaluationException, IOException {
         SearchRequest.Builder request;
 
         if (this.request instanceof String requestStr) {
-            request = parseQuery(transport, requestStr).toBuilder();
+            request = parseQuery(requestStr);
         } else if (this.request instanceof Map requestMap) {
             String requestStr = MAPPER.writeValueAsString(requestMap);
-            request = parseQuery(transport, requestStr).toBuilder();
+            request = parseQuery(requestStr);
         } else {
             throw new IllegalArgumentException("The `request` property must be a String or an Object");
         }
@@ -73,12 +74,9 @@ public abstract class AbstractSearch extends AbstractTask {
         return request;
     }
 
-    // Use the trick found here: https://forum.opensearch.org/t/how-to-create-index-using-json-file/11137
-    private SearchRequest parseQuery(OpenSearchTransport transport, String query) throws IOException {
+    private SearchRequest.Builder parseQuery(String query) throws IOException {
         try (Reader reader = new StringReader(query)) {
-            JsonpMapper mapper = transport.jsonpMapper();
-            JsonParser parser = mapper.jsonProvider().createParser(reader);
-            return SearchRequest._DESERIALIZER.deserialize(parser, mapper);
+            return new SearchRequest.Builder().withJson(reader);
         }
     }
 }

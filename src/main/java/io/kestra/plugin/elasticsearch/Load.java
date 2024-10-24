@@ -1,5 +1,7 @@
 package io.kestra.plugin.elasticsearch;
 
+import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import co.elastic.clients.elasticsearch.core.bulk.IndexOperation;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -16,8 +18,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.Map;
 import jakarta.validation.constraints.NotNull;
-import org.opensearch.client.opensearch.core.bulk.BulkOperation;
-import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import reactor.core.publisher.Flux;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;

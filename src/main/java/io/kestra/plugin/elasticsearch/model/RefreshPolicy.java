@@ -1,6 +1,6 @@
 package io.kestra.plugin.elasticsearch.model;
 
-import org.opensearch.client.opensearch._types.Refresh;
+import co.elastic.clients.elasticsearch._types.Refresh;
 
 public enum RefreshPolicy {
     IMMEDIATE,

@@ -1,5 +1,10 @@
 package io.kestra.plugin.elasticsearch;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.BulkResponse;
+import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
@@ -10,11 +15,6 @@ import io.kestra.core.serializers.FileSerde;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch.core.BulkRequest;
-import org.opensearch.client.opensearch.core.BulkResponse;
-import org.opensearch.client.opensearch.core.bulk.BulkOperation;
-import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
 
 import java.io.BufferedReader;
@@ -56,10 +56,10 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
         URI from = new URI(runContext.render(this.from));
 
         try (
-            RestClientTransport transport = this.connection.client(runContext);
-            BufferedReader inputStream = new BufferedReader(new InputStreamReader(runContext.storage().getFile(from)), FileSerde.BUFFER_SIZE)
+                RestClientTransport transport = this.connection.client(runContext);
+                BufferedReader inputStream = new BufferedReader(new InputStreamReader(runContext.storage().getFile(from)), FileSerde.BUFFER_SIZE)
         ) {
-            OpenSearchClient client = new OpenSearchClient(transport);
+            ElasticsearchClient client = new ElasticsearchClient(transport);
             AtomicLong count = new AtomicLong();
             AtomicLong duration = new AtomicLong();
 
@@ -83,7 +83,7 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
                 });
 
             // metrics & finalize
-            Long requestCount = flowable.count().block();
+            Long requestCount = flowable.count().blockOptional().orElse(0L);
             runContext.metric(Counter.of("requests.count", requestCount));
             runContext.metric(Counter.of("records", count.get()));
             runContext.metric(Timer.of("requests.duration", Duration.ofNanos(duration.get())));

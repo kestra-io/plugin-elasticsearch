@@ -1,5 +1,9 @@
 package io.kestra.plugin.elasticsearch;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.GetRequest;
+import co.elastic.clients.elasticsearch.core.GetResponse;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
@@ -8,10 +12,6 @@ import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch.core.GetRequest;
-import org.opensearch.client.opensearch.core.GetResponse;
-import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
 
 import java.util.Map;
@@ -73,7 +73,7 @@ public class Get extends AbstractTask implements RunnableTask<Get.Output> {
     public Get.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
         try (RestClientTransport transport = this.connection.client(runContext)) {
-            OpenSearchClient client = new OpenSearchClient(transport);
+            ElasticsearchClient client = new ElasticsearchClient(transport);
             String index = runContext.render(this.index);
             String key = runContext.render(this.key);
 

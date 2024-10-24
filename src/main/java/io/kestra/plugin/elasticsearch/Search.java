@@ -1,5 +1,9 @@
 package io.kestra.plugin.elasticsearch;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
@@ -13,13 +17,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.apache.commons.lang3.tuple.Pair;
-import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch.core.SearchRequest;
-import org.opensearch.client.opensearch.core.SearchResponse;
-import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.slf4j.Logger;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.io.*;
 import java.net.URI;
@@ -81,9 +80,9 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
         Logger logger = runContext.logger();
 
         try (RestClientTransport transport = this.connection.client(runContext)) {
-            OpenSearchClient client = new OpenSearchClient(transport);
+            ElasticsearchClient client = new ElasticsearchClient(transport);
             // build request
-            SearchRequest.Builder request = this.request(runContext, transport);
+            SearchRequest.Builder request = this.request(runContext);
             logger.debug("Starting query: {}", request);
 
             SearchResponse<Map> searchResponse = client.search(request.build(), Map.class);
