@@ -41,28 +41,49 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Send a ES|QL search request.",
-    description = "Get documents from a ES|QL search request and store it as outputs."
+    title = "Query Elasticsearch using ES|QL.",
+    description = "This task allows you to query Elasticsearch using ES|QL."
 )
 @Plugin(
     examples = {
         @Example(
+            title = "Load data in bulk to Elasticsearch and query it using ES|QL.",
             full = true,
             code = """
-                id: elasticsearch_search
+                id: bulk_load_and_query
                 namespace: company.team
 
                 tasks:
-                  - id: search
-                    type: io.kestra.plugin.elasticsearch.Search
-                    connection:
-                      hosts:
-                        - "http://localhost:9200"
+                  - id: extract
+                    type: io.kestra.plugin.core.http.Download
+                    uri: https://huggingface.co/datasets/kestra/datasets/resolve/main/jsonl/books.jsonl
+
+                  - id: load
+                    type: io.kestra.plugin.elasticsearch.Bulk
+                    from: "{{ outputs.extract.uri }}"
+                
+                  - id: sleep
+                    type: io.kestra.plugin.core.flow.Sleep
+                    duration: PT5S
+                    description: Pause needed after load before we can query
+
+                  - id: query
+                    type: io.kestra.plugin.elasticsearch.Esql
+                    fetchType: STORE
                     query: |
-                      FROM library
-                      | KEEP author, name, page_count, release_date
-                      | SORT page_count DESC
-                      | LIMIT 5
+                      FROM books
+                        | KEEP author, name, page_count, release_date
+                        | SORT page_count DESC
+                        | LIMIT 5
+
+                pluginDefaults:
+                  - type: io.kestra.plugin.elasticsearch
+                    values:
+                      connection:
+                        headers:
+                          - "Authorization: ApiKey yourEncodedApiKey"
+                        hosts:
+                          - https://yourCluster.us-central1.gcp.cloud.es.io:443
                 """
         )
     }
@@ -91,8 +112,8 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     private String query;
 
     @Schema(
-        title = "A Query DSL query filter.",
-        description = "Specify a Query DSL query in the filter parameter to filter the set of documents that an ES|QL query runs on."
+        title = "Query filter.",
+        description = "Specify a DSL query in the filter parameter to filter the set of documents that an ES|QL query runs on."
     )
     @PluginProperty(dynamic = true)
     private Object filter;
@@ -199,12 +220,12 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The size of the rows fetched."
+            title = "The number of fetched rows."
         )
         private Integer size;
 
         @Schema(
-            title = "The total of the rows fetched without pagination."
+            title = "The total number of rows fetched without pagination."
         )
         private Long total;
 
@@ -221,7 +242,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
         private Map<String, Object> row;
 
         @Schema(
-            title = "The URI of the stored data.",
+            title = "The URI of the data stored in Kestra's internal storage.",
             description = "Only populated if using `fetchType=STORE`."
         )
         private URI uri;
