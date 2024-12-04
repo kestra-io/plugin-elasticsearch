@@ -1,6 +1,7 @@
 package io.kestra.plugin.elasticsearch;
 
 import com.google.common.collect.ImmutableMap;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.serializers.FileSerde;
@@ -51,10 +52,10 @@ class LoadTest {
 
         Load put = Load.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .index(indice)
+            .index(Property.of(indice))
             .from(uri.toString())
-            .chunk(10)
-            .idKey("id")
+            .chunk(Property.of(10))
+            .idKey(Property.of("id"))
             .build();
 
         Load.Output runOutput = put.run(runContext);

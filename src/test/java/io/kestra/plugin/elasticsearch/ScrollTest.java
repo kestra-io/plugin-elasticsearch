@@ -1,5 +1,6 @@
 package io.kestra.plugin.elasticsearch;
 
+import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.micronaut.context.annotation.Value;
@@ -27,7 +28,7 @@ class ScrollTest {
 
         Scroll task = Scroll.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .indexes(Collections.singletonList("gbif"))
+            .indexes(Property.of(Collections.singletonList("gbif")))
             .request("""
                 {
                     "query": {
@@ -49,7 +50,7 @@ class ScrollTest {
 
         Scroll task = Scroll.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .indexes(Collections.singletonList("gbif"))
+            .indexes(Property.of(Collections.singletonList("gbif")))
             .request("""
                 {
                     "query": {

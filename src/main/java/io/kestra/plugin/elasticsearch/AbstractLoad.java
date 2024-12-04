@@ -9,6 +9,7 @@ import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.executions.metrics.Timer;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
@@ -46,7 +47,7 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
     )
     @PluginProperty(dynamic = true)
     @Builder.Default
-    private Integer chunk = 1000;
+    private Property<Integer> chunk = Property.of(1000);
 
     abstract protected Flux<BulkOperation> source(RunContext runContext, BufferedReader inputStream) throws IllegalVariableEvaluationException, IOException;
 
@@ -67,7 +68,7 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
                 .doOnNext(docWriteRequest -> {
                     count.incrementAndGet();
                 })
-                .buffer(this.chunk, this.chunk)
+                .buffer(runContext.render(this.chunk).as(Integer.class).orElseThrow(), runContext.render(this.chunk).as(Integer.class).orElseThrow())
                 .map(throwFunction(indexRequests -> {
                     var bulkRequest = new BulkRequest.Builder();
                     bulkRequest.operations(indexRequests);

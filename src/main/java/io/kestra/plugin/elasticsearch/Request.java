@@ -5,11 +5,13 @@ import com.google.common.base.Charsets;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.elasticsearch.model.HttpMethod;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.apache.commons.io.IOUtils;
@@ -43,7 +45,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
                   - id: request_post
                     type: io.kestra.plugin.elasticsearch.Request
                     connection:
-                      hosts: 
+                      hosts:
                        - "http://localhost:9200"
                     method: "POST"
                     endpoint: "my_index/_doc/john"
@@ -62,7 +64,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
                   - id: request_get
                     type: io.kestra.plugin.elasticsearch.Request
                     connection:
-                      hosts: 
+                      hosts:
                        - "http://localhost:9200"
                     method: "GET"
                     endpoint: "my_index/_search"
@@ -94,20 +96,18 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
         title = "The http method to use."
     )
     @Builder.Default
-    @PluginProperty
-    protected HttpMethod method = HttpMethod.GET;
+    protected Property<HttpMethod> method = Property.of(HttpMethod.GET);
 
     @Schema(
         title = "The path of the request (without scheme, host, port, or prefix)."
     )
-    @PluginProperty(dynamic = true)
-    protected String endpoint;
+    @NotNull
+    protected Property<String> endpoint;
 
     @Schema(
         title = "Query string parameters."
     )
-    @PluginProperty(dynamic = true, additionalProperties = String.class)
-    protected Map<String, String> parameters;
+    protected Property<Map<String, String>> parameters;
 
     @Schema(
         title = "The full body.",
@@ -121,14 +121,15 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
         Logger logger = runContext.logger();
         try (RestClientTransport transport = this.connection.client(runContext)) {
             org.elasticsearch.client.Request request = new org.elasticsearch.client.Request(
-                method.name(),
-                runContext.render(endpoint)
+                runContext.render(method).as(HttpMethod.class).orElseThrow().name(),
+                runContext.render(endpoint).as(String.class).orElseThrow()
             );
 
             if (this.parameters != null) {
-                this.parameters.entrySet()
+                runContext.render(this.parameters).asMap(String.class, String.class)
+                    .entrySet()
                     .forEach(throwConsumer(e -> {
-                        request.addParameter(runContext.render(e.getKey()), runContext.render(e.getValue()));
+                        request.addParameter(e.getKey(), e.getValue());
                     }));
             }
 

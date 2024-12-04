@@ -3,6 +3,7 @@ package io.kestra.plugin.elasticsearch;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.elasticsearch.model.XContentType;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -24,8 +25,7 @@ public abstract class AbstractSearch extends AbstractTask {
         title = "The ElasticSearch indices.",
         description = "Default to all indices."
     )
-    @PluginProperty(dynamic = true)
-    private List<String> indexes;
+    private Property<List<String>> indexes;
 
     @Schema(
         title = "The ElasticSearch value.",
@@ -49,12 +49,12 @@ public abstract class AbstractSearch extends AbstractTask {
 
         request = QueryService.request(runContext, this.request);
 
-        if (this.indexes != null) {
-            request.index(runContext.render(this.indexes));
+        if (!runContext.render(this.indexes).asList(String.class).isEmpty()) {
+            request.index(runContext.render(this.indexes).asList(String.class));
         }
 
         if (this.routing != null) {
-            request.routing(this.routing);
+            request.routing(runContext.render(this.routing).as(String.class).orElseThrow());
         }
 
         return request;

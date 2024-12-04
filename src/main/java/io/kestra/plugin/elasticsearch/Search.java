@@ -9,6 +9,7 @@ import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.executions.metrics.Timer;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
@@ -45,17 +46,17 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
             code = """
                 id: elasticsearch_search
                 namespace: company.team
-                
+
                 tasks:
                   - id: search
                     type: io.kestra.plugin.elasticsearch.Search
                     connection:
-                      hosts: 
+                      hosts:
                         - "http://localhost:9200"
                     indexes:
                       - "my_index"
                     request:
-                      query: 
+                      query:
                         term:
                           name:
                             value: 'john'
@@ -72,8 +73,7 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
             + "NONE do nothing."
     )
     @Builder.Default
-    @PluginProperty
-    private FetchType fetchType = FetchType.FETCH;
+    private Property<FetchType> fetchType = Property.of(FetchType.FETCH);
 
     @Override
     public Search.Output run(RunContext runContext) throws Exception {
@@ -89,7 +89,7 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
 
             Output.OutputBuilder outputBuilder = Search.Output.builder();
 
-            switch (fetchType) {
+            switch (runContext.render(fetchType).as(FetchType.class).orElseThrow()) {
                 case FETCH:
                     Pair<List<Map<String, Object>>, Integer> fetch = this.fetch(searchResponse);
                     outputBuilder

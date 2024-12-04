@@ -11,6 +11,7 @@ import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
@@ -41,12 +42,12 @@ import jakarta.validation.constraints.NotNull;
             code = """
                 id: elasticsearch_put
                 namespace: company.team
-                
+
                 tasks:
                   - id: put
                     type: io.kestra.plugin.elasticsearch.Put
                     connection:
-                      hosts: 
+                      hosts:
                        - "http://localhost:9200"
                     index: "my_index"
                     key: "my_id"
@@ -61,17 +62,17 @@ import jakarta.validation.constraints.NotNull;
             code = """
                 id: elasticsearch_put
                 namespace: company.team
-                
+
                 inputs:
                   - id: value
                     type: JSON
                     defaults: {"name": "John Doe", "city": "Paris"}
-                    
+
                 tasks:
                   - id: put
                     type: io.kestra.plugin.elasticsearch.Put
                     connection:
-                      hosts: 
+                      hosts:
                        - "http://localhost:9200"
                     index: "my_index"
                     key: "my_id"
@@ -86,21 +87,18 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
     @Schema(
         title = "The elasticsearch index."
     )
-    @PluginProperty(dynamic = true)
     @NotNull
-    private String index;
+    private Property<String> index;
 
     @Schema(
         title = "Sets the type of operation to perform."
     )
-    @PluginProperty
-    private OpType opType;
+    private Property<OpType> opType;
 
     @Schema(
         title = "The elasticsearch id."
     )
-    @PluginProperty(dynamic = true)
-    private String key;
+    private Property<String> key;
 
     @Schema(
         title = "The elasticsearch value.",
@@ -113,24 +111,22 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
         title = "Should this request trigger a refresh.",
         description = "an immediate refresh `IMMEDIATE`, wait for a refresh `WAIT_UNTIL`, or proceed ignore refreshes entirely `NONE`."
     )
-    @PluginProperty
     @Builder.Default
-    private RefreshPolicy refreshPolicy = RefreshPolicy.NONE;
+    private Property<RefreshPolicy> refreshPolicy = Property.of(RefreshPolicy.NONE);
 
     @Schema(
         title = "The content type of `value`."
     )
-    @PluginProperty
     @Builder.Default
-    private XContentType contentType = XContentType.JSON;
+    private Property<XContentType> contentType = Property.of(XContentType.JSON);
 
     @Override
     public Put.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
         try (RestClientTransport transport = this.connection.client(runContext)) {
             ElasticsearchClient client = new ElasticsearchClient(transport);
-            String index = runContext.render(this.index);
-            String key = runContext.render(this.key);
+            String index = runContext.render(this.index).as(String.class).orElseThrow();
+            String key = runContext.render(this.key).as(String.class).orElse(null);
 
             var request = new IndexRequest.Builder<Map>();
             request.index(index);
@@ -143,15 +139,15 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
             }
 
             if (this.opType != null) {
-                request.opType(this.opType.to());
+                request.opType(runContext.render(this.opType).as(OpType.class).orElseThrow().to());
             }
 
             if (this.refreshPolicy != null) {
-                request.refresh(this.refreshPolicy.to());
+                request.refresh(runContext.render(this.refreshPolicy).as(RefreshPolicy.class).orElseThrow().to());
             }
 
             if (this.routing != null) {
-                request.routing(this.routing);
+                request.routing(runContext.render(this.routing).as(String.class).orElseThrow());
             }
 
             logger.debug("Putting doc: {}", request);

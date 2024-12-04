@@ -1,6 +1,7 @@
 package io.kestra.plugin.elasticsearch;
 
 import io.kestra.core.junit.annotations.KestraTest;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
@@ -37,10 +38,10 @@ class EsqlTest {
 
         Esql task = Esql.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .query("""
+            .query(Property.of("""
                 FROM gbif
                 | WHERE key == 925277090
-                """)
+                """))
             .build();
 
         Esql.Output run = task.run(runContext);
@@ -55,7 +56,7 @@ class EsqlTest {
 
         Esql task = Esql.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .query("FROM gbif")
+            .query(Property.of("FROM gbif"))
             .filter("""
                 {
                     "query": {
@@ -78,11 +79,11 @@ class EsqlTest {
 
         Esql task = Esql.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .query("""
+            .query(Property.of("""
                 FROM gbif
                 | WHERE publishingCountry.keyword == "BE"
-                """)
-            .fetchType(FetchType.FETCH_ONE)
+                """))
+            .fetchType(Property.of(FetchType.FETCH_ONE))
             .build();
 
         Esql.Output run = task.run(runContext);
@@ -99,12 +100,12 @@ class EsqlTest {
 
         Esql task = Esql.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .query("""
+            .query(Property.of("""
                 FROM gbif
                 | WHERE publishingCountry.keyword == "BE"
                 | LIMIT 10
-                """)
-            .fetchType(FetchType.STORE)
+                """))
+            .fetchType(Property.of(FetchType.STORE))
             .build();
 
         Esql.Output run = task.run(runContext);

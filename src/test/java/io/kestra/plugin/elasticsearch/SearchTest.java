@@ -1,5 +1,6 @@
 package io.kestra.plugin.elasticsearch;
 
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
@@ -38,7 +39,7 @@ class SearchTest {
 
         Search task = Search.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .indexes(Collections.singletonList("gbif"))
+            .indexes(Property.of(Collections.singletonList("gbif")))
             .request("""
                 {
                     "query": {
@@ -61,7 +62,7 @@ class SearchTest {
 
         Search task = Search.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .indexes(Collections.singletonList("gbif"))
+            .indexes(Property.of(Collections.singletonList("gbif")))
             .request("""
                 {
                     "query": {
@@ -73,7 +74,7 @@ class SearchTest {
                         "key": "asc"
                     }
                 }""")
-            .fetchType(FetchType.FETCH_ONE)
+            .fetchType(Property.of(FetchType.FETCH_ONE))
             .build();
 
         Search.Output run = task.run(runContext);
@@ -90,7 +91,7 @@ class SearchTest {
 
         Search task = Search.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .indexes(Collections.singletonList("gbif"))
+            .indexes(Property.of(Collections.singletonList("gbif")))
             .request("""
                 {
                     "query": {
@@ -99,7 +100,7 @@ class SearchTest {
                         }
                     }
                 }""")
-            .fetchType(FetchType.STORE)
+            .fetchType(Property.of(FetchType.STORE))
             .build();
 
         Search.Output run = task.run(runContext);

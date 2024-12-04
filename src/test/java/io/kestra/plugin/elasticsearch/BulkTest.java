@@ -1,6 +1,7 @@
 package io.kestra.plugin.elasticsearch;
 
 import io.kestra.core.junit.annotations.KestraTest;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.serializers.FileSerde;
@@ -70,7 +71,7 @@ class BulkTest {
         Bulk put = Bulk.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .from(uri.toString())
-            .chunk(10)
+            .chunk(Property.of(10))
             .build();
 
         Bulk.Output runOutput = put.run(runContext);
@@ -97,7 +98,7 @@ class BulkTest {
         Bulk put = Bulk.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .from(uri.toString())
-            .chunk(10)
+            .chunk(Property.of(10))
             .build();
 
         Bulk.Output runOutput = put.run(runContext);
