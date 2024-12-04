@@ -1,7 +1,6 @@
 package io.kestra.plugin.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._helpers.esql.objects.ObjectsEsqlAdapter;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.esql.QueryRequest;
 import co.elastic.clients.elasticsearch.esql.query.EsqlFormat;
@@ -12,6 +11,7 @@ import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
@@ -61,7 +61,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                   - id: load
                     type: io.kestra.plugin.elasticsearch.Bulk
                     from: "{{ outputs.extract.uri }}"
-                
+
                   - id: sleep
                     type: io.kestra.plugin.core.flow.Sleep
                     duration: PT5S
@@ -99,17 +99,15 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
             + "NONE do nothing."
     )
     @Builder.Default
-    @PluginProperty
     @NotNull
-    private FetchType fetchType = FetchType.FETCH;
+    private Property<FetchType> fetchType = Property.of(FetchType.FETCH);
 
     @Schema(
         title = "The ElasticSearch value.",
         description = "Can be a JSON string. In this case, the contentType will be used or a raw Map."
     )
-    @PluginProperty(dynamic = true)
     @NotNull
-    private String query;
+    private Property<String> query;
 
     @Schema(
         title = "Query filter.",
@@ -127,7 +125,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
 
             // build request
             QueryRequest queryRequest = QueryRequest.of(throwFunction(builder -> {
-                    builder.query(runContext.render(this.query));
+                    builder.query(runContext.render(this.query).as(String.class).orElseThrow());
                     builder.format(EsqlFormat.Json);
                     builder.columnar(false);
 
@@ -148,7 +146,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
 
             Output.OutputBuilder outputBuilder = Esql.Output.builder();
 
-            switch (fetchType) {
+            switch (runContext.render(this.fetchType).as(FetchType.class).orElseThrow()) {
                 case FETCH:
                     Pair<List<Map<String, Object>>, Integer> fetch = this.fetch(queryResponse);
                     outputBuilder

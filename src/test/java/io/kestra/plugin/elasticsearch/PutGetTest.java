@@ -1,6 +1,7 @@
 package io.kestra.plugin.elasticsearch;
 
 import com.google.common.collect.ImmutableMap;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.utils.IdUtils;
@@ -31,7 +32,7 @@ class PutGetTest {
 
         Put put = Put.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .index(indice)
+            .index(Property.of(indice))
             .value("{{ variable }}")
             .build();
 
@@ -39,8 +40,8 @@ class PutGetTest {
 
         Get task = Get.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .index(indice)
-            .key(putOutput.getId())
+            .index(Property.of(indice))
+            .key(Property.of(putOutput.getId()))
             .build();
 
         Get.Output runOutput = task.run(runContext);
@@ -49,7 +50,7 @@ class PutGetTest {
 
         put = Put.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .index(indice)
+            .index(Property.of(indice))
             .value(Map.of(
                 "name", "Jane Doe"
             ))
@@ -59,8 +60,8 @@ class PutGetTest {
 
         task = Get.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .index(indice)
-            .key(putOutput.getId())
+            .index(Property.of(indice))
+            .key(Property.of(putOutput.getId()))
             .build();
 
         runOutput = task.run(runContext);

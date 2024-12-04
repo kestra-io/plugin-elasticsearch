@@ -5,6 +5,7 @@ import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -57,8 +58,7 @@ public class ElasticsearchConnection {
         title = "List of HTTP headers to be send on every request.",
         description = "Must be a string with key value separated with `:`, ex: `Authorization: Token XYZ`."
     )
-    @PluginProperty(dynamic = true)
-    private List<String> headers;
+    private Property<List<String>> headers;
 
     @Schema(
         title = "Sets the path's prefix for every request used by the HTTP client.",
@@ -68,21 +68,18 @@ public class ElasticsearchConnection {
             "or a proxy that requires all paths to start with '/'; it is not intended for other purposes and " +
             "it should not be supplied in other scenarios."
     )
-    @PluginProperty(dynamic = true)
-    private String pathPrefix;
+    private Property<String> pathPrefix;
 
     @Schema(
         title = "Whether the REST client should return any response containing at least one warning header as a failure."
     )
-    @PluginProperty
-    private Boolean strictDeprecationMode;
+    private Property<Boolean> strictDeprecationMode;
 
     @Schema(
         title = "Trust all SSL CA certificates.",
         description = "Use this if the server is using a self signed SSL certificate."
     )
-    @PluginProperty
-    private Boolean trustAllSsl;
+    private Property<Boolean> trustAllSsl;
 
     @SuperBuilder
     @NoArgsConstructor
@@ -91,14 +88,12 @@ public class ElasticsearchConnection {
         @Schema(
             title = "Basic auth username."
         )
-        @PluginProperty(dynamic = true)
-        private String username;
+        private Property<String> username;
 
         @Schema(
             title = "Basic auth password."
         )
-        @PluginProperty(dynamic = true)
-        private String password;
+        private Property<String> password;
     }
 
     RestClientTransport client(RunContext runContext) throws IllegalVariableEvaluationException {
@@ -113,12 +108,12 @@ public class ElasticsearchConnection {
             builder.setDefaultHeaders(this.defaultHeaders(runContext));
         }
 
-        if (this.getPathPrefix() != null) {
-            builder.setPathPrefix(runContext.render(this.pathPrefix));
+        if (runContext.render(this.pathPrefix).as(String.class).isPresent()) {
+            builder.setPathPrefix(runContext.render(this.pathPrefix).as(String.class).get());
         }
 
-        if (this.getStrictDeprecationMode() != null) {
-            builder.setStrictDeprecationMode(this.getStrictDeprecationMode());
+        if (runContext.render(this.strictDeprecationMode).as(Boolean.class).isPresent()) {
+            builder.setStrictDeprecationMode(runContext.render(this.strictDeprecationMode).as(Boolean.class).get());
         }
 
         return new RestClientTransport(builder.build(), new JacksonJsonpMapper(MAPPER));
@@ -135,15 +130,15 @@ public class ElasticsearchConnection {
             basicCredential.setCredentials(
                 AuthScope.ANY,
                 new UsernamePasswordCredentials(
-                    runContext.render(this.basicAuth.username),
-                    runContext.render(this.basicAuth.password)
+                    runContext.render(this.basicAuth.username).as(String.class).orElseThrow(),
+                    runContext.render(this.basicAuth.password).as(String.class).orElseThrow()
                 )
             );
 
             builder.setDefaultCredentialsProvider(basicCredential);
         }
 
-        if (trustAllSsl != null && trustAllSsl) {
+        if (runContext.render(this.trustAllSsl).as(Boolean.class).orElse(false)) {
             SSLContextBuilder sslContextBuilder = new SSLContextBuilder();
             sslContextBuilder.loadTrustMaterial(null, (TrustStrategy) (chain, authType) -> true);
             SSLContext sslContext = sslContextBuilder.build();
@@ -166,7 +161,7 @@ public class ElasticsearchConnection {
     }
 
     private Header[] defaultHeaders(RunContext runContext) throws IllegalVariableEvaluationException {
-        return runContext.render(this.headers)
+        return runContext.render(this.headers).asList(String.class)
             .stream()
             .map(header -> {
                 String[] nameAndValue = header.split(":");
