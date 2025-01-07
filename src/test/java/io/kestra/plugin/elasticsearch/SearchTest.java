@@ -22,8 +22,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
-@KestraTest
-class SearchTest {
+class SearchTest extends ElsContainer {
     @Inject
     private RunContextFactory runContextFactory;
 

@@ -38,63 +38,28 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
     @Schema(
         title = "The source file."
     )
-    @PluginProperty(dynamic = true)
     @NotNull
     private String from;
 
     @Schema(
-        title = "The chunk size for every bulk request."
+        title = "The chunk size for every bulk request. Default value: 1000"
     )
-    @PluginProperty(dynamic = true)
-    @Builder.Default
-    private Property<Integer> chunk = Property.of(1000);
+    private Property<Integer> chunk;
 
     abstract protected Flux<BulkOperation> source(RunContext runContext, BufferedReader inputStream) throws IllegalVariableEvaluationException, IOException;
 
     @Override
     public AbstractLoad.Output run(RunContext runContext) throws Exception {
-        Logger logger = runContext.logger();
         URI from = new URI(runContext.render(this.from));
 
         try (
                 RestClientTransport transport = this.connection.client(runContext);
                 BufferedReader inputStream = new BufferedReader(new InputStreamReader(runContext.storage().getFile(from)), FileSerde.BUFFER_SIZE)
         ) {
-            ElasticsearchClient client = new ElasticsearchClient(transport);
-            AtomicLong count = new AtomicLong();
-            AtomicLong duration = new AtomicLong();
+            Integer bufferSize = runContext.render(this.chunk).as(Integer.class).orElse(1000);
+            Flux<BulkOperation> operationFlux = this.source(runContext, inputStream);
 
-            Flux<BulkResponse> flowable = this.source(runContext, inputStream)
-                .doOnNext(docWriteRequest -> {
-                    count.incrementAndGet();
-                })
-                .buffer(runContext.render(this.chunk).as(Integer.class).orElseThrow(), runContext.render(this.chunk).as(Integer.class).orElseThrow())
-                .map(throwFunction(indexRequests -> {
-                    var bulkRequest = new BulkRequest.Builder();
-                    bulkRequest.operations(indexRequests);
-
-                    return client.bulk(bulkRequest.build());
-                }))
-                .doOnNext(bulkItemResponse -> {
-                    duration.addAndGet(bulkItemResponse.took());
-
-                    if (bulkItemResponse.errors()) {
-                        throw new RuntimeException("Indexer failed bulk:\n " + logError(bulkItemResponse));
-                    }
-                });
-
-            // metrics & finalize
-            Long requestCount = flowable.count().blockOptional().orElse(0L);
-            runContext.metric(Counter.of("requests.count", requestCount));
-            runContext.metric(Counter.of("records", count.get()));
-            runContext.metric(Timer.of("requests.duration", Duration.ofNanos(duration.get())));
-
-            logger.info(
-                "Successfully send {} requests for {} records in {}",
-                requestCount,
-                count.get(),
-                Duration.ofNanos(duration.get())
-            );
+            AtomicLong count = executeBulk(runContext, transport, operationFlux, bufferSize);
 
             return Output.builder()
                 .size(count.get())
@@ -102,7 +67,48 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
         }
     }
 
-    private String logError(BulkResponse bulkResponse) {
+    public static AtomicLong executeBulk(RunContext runContext, RestClientTransport transport,
+        Flux<BulkOperation> operationFlux, Integer bufferSize) throws IOException {
+        ElasticsearchClient client = new ElasticsearchClient(transport);
+        AtomicLong count = new AtomicLong();
+        AtomicLong duration = new AtomicLong();
+        Logger logger = runContext.logger();
+
+        Flux<BulkResponse> flowable = operationFlux
+            .doOnNext(docWriteRequest -> {
+                count.incrementAndGet();
+            })
+            .buffer(bufferSize, bufferSize)
+            .map(throwFunction(indexRequests -> {
+                var bulkRequest = new BulkRequest.Builder();
+                bulkRequest.operations(indexRequests);
+
+                return client.bulk(bulkRequest.build());
+            }))
+            .doOnNext(bulkItemResponse -> {
+                duration.addAndGet(bulkItemResponse.took());
+
+                if (bulkItemResponse.errors()) {
+                    throw new RuntimeException("Indexer failed bulk:\n " + logError(bulkItemResponse));
+                }
+            });
+
+        // metrics & finalize
+        Long requestCount = flowable.count().blockOptional().orElse(0L);
+        runContext.metric(Counter.of("requests.count", requestCount));
+        runContext.metric(Counter.of("records", count.get()));
+        runContext.metric(Timer.of("requests.duration", Duration.ofNanos(duration.get())));
+
+        logger.info(
+            "Successfully send {} requests for {} records in {}",
+            requestCount,
+            count.get(),
+            Duration.ofNanos(duration.get())
+        );
+        return count;
+    }
+
+    private static String logError(BulkResponse bulkResponse) {
         StringBuilder builder = new StringBuilder();
         bulkResponse.items().forEach(
             responseItem -> {
