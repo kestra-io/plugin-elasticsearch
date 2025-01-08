@@ -7,10 +7,8 @@ import static org.hamcrest.Matchers.notNullValue;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.storages.StorageInterface;
-import io.micronaut.context.annotation.Value;
 import jakarta.inject.Inject;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -20,11 +18,6 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class EsqlTest extends ElsContainer{
-    @Inject
-    private RunContextFactory runContextFactory;
-
-    @Value("${elasticsearch-hosts}")
-    private List<String> hosts;
 
     @Inject
     private StorageInterface storageInterface;

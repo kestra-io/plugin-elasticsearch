@@ -5,19 +5,10 @@ import static org.hamcrest.Matchers.is;
 
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.runners.RunContextFactory;
-import io.micronaut.context.annotation.Value;
-import jakarta.inject.Inject;
 import java.util.Collections;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ScrollTest extends ElsContainer {
-    @Inject
-    private RunContextFactory runContextFactory;
-
-    @Value("${elasticsearch-hosts}")
-    private List<String> hosts;
 
     @Test
     void run() throws Exception {

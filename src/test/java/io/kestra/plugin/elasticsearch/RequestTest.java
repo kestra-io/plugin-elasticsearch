@@ -5,23 +5,13 @@ import static org.hamcrest.Matchers.is;
 
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.elasticsearch.model.HttpMethod;
-import io.micronaut.context.annotation.Value;
-import jakarta.inject.Inject;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class RequestTest extends ElsContainer {
-    @Inject
-    private RunContextFactory runContextFactory;
-
-    @Value("${elasticsearch-hosts}")
-    private List<String> hosts;
-
 
     @SuppressWarnings("unchecked")
     @Test
