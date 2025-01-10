@@ -62,7 +62,6 @@ dependencies {
 
     // Logs
     compileOnly'org.slf4j:slf4j-api'
-    implementation 'io.opentelemetry:opentelemetry-sdk-logs:1.45.0'
 }
 
 

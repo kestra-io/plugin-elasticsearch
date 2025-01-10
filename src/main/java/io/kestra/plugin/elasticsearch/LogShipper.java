@@ -7,7 +7,6 @@ import co.elastic.clients.transport.rest_client.RestClientTransport;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
-import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.VoidOutput;
 import io.kestra.core.models.tasks.logs.LogRecord;
@@ -31,7 +30,7 @@ import reactor.core.publisher.Flux;
 @Schema(
     title = "Ship logs to Elasticsearch",
     description = """
-        This task is designed to send logs from kestra to an Elasticsearch.
+        This task is designed to send logs from kestra to an Elasticsearch database.
         """
 )
 @Plugin(
@@ -79,7 +78,6 @@ public class LogShipper extends io.kestra.core.models.tasks.logs.LogShipper<Void
     @Schema(
         title = "The chunk size for every bulk request."
     )
-    @PluginProperty(dynamic = true)
     @Builder.Default
     private Property<Integer> chunk = Property.of(1000);
 
