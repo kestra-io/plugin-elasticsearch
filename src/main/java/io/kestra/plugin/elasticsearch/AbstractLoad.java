@@ -15,6 +15,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
+import lombok.Builder.Default;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
@@ -42,9 +43,10 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
     private String from;
 
     @Schema(
-        title = "The chunk size for every bulk request. Default value: 1000"
+        title = "The chunk size for every bulk request."
     )
-    private Property<Integer> chunk;
+    @Default
+    private Property<Integer> chunk = Property.of(1000);
 
     abstract protected Flux<BulkOperation> source(RunContext runContext, BufferedReader inputStream) throws IllegalVariableEvaluationException, IOException;
 
@@ -56,7 +58,7 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
                 RestClientTransport transport = this.connection.client(runContext);
                 BufferedReader inputStream = new BufferedReader(new InputStreamReader(runContext.storage().getFile(from)), FileSerde.BUFFER_SIZE)
         ) {
-            Integer bufferSize = runContext.render(this.chunk).as(Integer.class).orElse(1000);
+            Integer bufferSize = runContext.render(this.chunk).as(Integer.class).orElseThrow();
             Flux<BulkOperation> operationFlux = this.source(runContext, inputStream);
 
             AtomicLong count = executeBulk(runContext, transport, operationFlux, bufferSize);
