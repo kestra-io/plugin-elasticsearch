@@ -38,7 +38,7 @@ import reactor.core.publisher.Flux;
         @Example(
             title = "Ship logs to Elasticsearch",
             code = """
-                id: logSync
+                id: log_shipper
                 namespace: company.team
 
                 triggers:
@@ -48,20 +48,19 @@ import reactor.core.publisher.Flux;
 
                 tasks:
                   - id: logSync
-                    type: io.kestra.plugin.ee.core.log.LogSync
+                    type: io.kestra.plugin.ee.core.log.LogShipper
                     logLevelFilter: INFO
-                    batchSize: 2
-                    startingDurationBefore: P1D
-                    stateName: LogSync-state
-                    logShippers:
-                      - type: io.kestra.plugin.elasticsearch.LogShipper
-                        id: ElasticsearchLogShipper
+                    batchSize: 1000
+                    lookbackPeriod: P1D
+                    logExporters:
+                      - id: ElasticsearchLogExporter
+                        type: io.kestra.plugin.elasticsearch.LogExporter
                 """,
             full = true
         )
     }
 )
-public class LogShipper extends io.kestra.core.models.tasks.logs.LogShipper<VoidOutput> {
+public class LogExporter extends io.kestra.core.models.tasks.logs.LogExporter<VoidOutput> {
 
     @Schema(
         title = "The connection properties."

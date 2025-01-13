@@ -12,7 +12,6 @@ import co.elastic.clients.elasticsearch.indices.RefreshRequest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.logs.LogRecord;
 import io.kestra.core.runners.RunContext;
-import io.opentelemetry.api.logs.Severity;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
@@ -21,7 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.event.Level;
 import reactor.core.publisher.Flux;
 
-public class LogShipperTest extends ElsContainer {
+public class LogExporterTest extends ElsContainer {
 
     public static final String LOG_INDEX = "log_index";
 
@@ -32,7 +31,7 @@ public class LogShipperTest extends ElsContainer {
             .build());
 
         RunContext runContext = runContextFactory.of();
-        LogShipper logShipper = LogShipper.builder()
+        LogExporter logExporter = LogExporter.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .chunk(Property.of(2))
             .indexName(Property.of(LOG_INDEX))
@@ -47,7 +46,7 @@ public class LogShipperTest extends ElsContainer {
             logRecord2,
             logRecord3));
 
-        logShipper.sendLogs(runContext, logs);
+        logExporter.sendLogs(runContext, logs);
 
         assertThat(runContext.metrics().stream().filter(e -> e.getName().equals("requests.count")).findFirst().orElseThrow().getValue(), is(2D));
         assertThat(runContext.metrics().stream().filter(e -> e.getName().equals("records")).findFirst().orElseThrow().getValue(), is(3D));
@@ -92,16 +91,6 @@ public class LogShipperTest extends ElsContainer {
 
     public static long instantInNanos(Instant instant) {
         return instant.getEpochSecond() * 1_000_000_000 + instant.getNano();
-    }
-
-    public static Severity convertLogLevelToSeverity(Level level) {
-        return switch (level) {
-            case TRACE -> Severity.TRACE;
-            case DEBUG -> Severity.DEBUG;
-            case INFO -> Severity.INFO;
-            case WARN -> Severity.WARN;
-            case ERROR -> Severity.ERROR;
-        };
     }
 
 }
