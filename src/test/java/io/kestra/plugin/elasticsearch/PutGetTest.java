@@ -1,29 +1,17 @@
 package io.kestra.plugin.elasticsearch;
 
-import com.google.common.collect.ImmutableMap;
-import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.RunContext;
-import io.kestra.core.runners.RunContextFactory;
-import io.kestra.core.utils.IdUtils;
-import io.micronaut.context.annotation.Value;
-import io.kestra.core.junit.annotations.KestraTest;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
-@KestraTest
-class PutGetTest {
-    @Inject
-    private RunContextFactory runContextFactory;
+import com.google.common.collect.ImmutableMap;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContext;
+import io.kestra.core.utils.IdUtils;
+import java.util.Locale;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
 
-    @Value("${elasticsearch-hosts}")
-    private List<String> hosts;
+class PutGetTest extends ElsContainer {
 
     @Test
     void run() throws Exception {

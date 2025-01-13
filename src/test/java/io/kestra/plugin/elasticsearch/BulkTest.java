@@ -1,17 +1,16 @@
 package io.kestra.plugin.elasticsearch;
 
-import io.kestra.core.junit.annotations.KestraTest;
+import static io.kestra.core.utils.Rethrow.throwConsumer;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.utils.IdUtils;
-import io.micronaut.context.annotation.Value;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -22,18 +21,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
+import org.junit.jupiter.api.Test;
 
-import static io.kestra.core.utils.Rethrow.throwConsumer;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-
-@KestraTest
-class BulkTest {
-    @Inject
-    private RunContextFactory runContextFactory;
-
-    @Value("${elasticsearch-hosts}")
-    private List<String> hosts;
+class BulkTest extends ElsContainer {
 
     @Inject
     private StorageInterface storageInterface;
