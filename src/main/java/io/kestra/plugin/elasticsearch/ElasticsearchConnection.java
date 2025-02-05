@@ -1,6 +1,7 @@
 package io.kestra.plugin.elasticsearch;
 
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.instrumentation.NoopInstrumentation;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -116,7 +117,8 @@ public class ElasticsearchConnection {
             builder.setStrictDeprecationMode(runContext.render(this.strictDeprecationMode).as(Boolean.class).get());
         }
 
-        return new RestClientTransport(builder.build(), new JacksonJsonpMapper(MAPPER));
+        return new RestClientTransport(builder.build(), new JacksonJsonpMapper(MAPPER), null,
+            NoopInstrumentation.INSTANCE);
     }
 
     @SneakyThrows
