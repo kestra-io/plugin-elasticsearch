@@ -1,0 +1,44 @@
+id: all
+namespace: sanitycheck.plugin.elasticsearch
+
+tasks:
+  - id: init
+    type: io.kestra.plugin.core.output.OutputValues
+    values:
+      randomPort: "{{ randomPort() }}"
+
+  - id: write
+    type: io.kestra.plugin.core.storage.Write
+    content: "extensions:\n  health_check: {}\n\nreceivers:\n  otlp:\n    protocols:\n      grpc:\n        endpoint: 0.0.0.0:4317\n      http:\n        endpoint: 0.0.0.0:4318\n\nexporters:\n  debug: {}\n\nservice:\n  pipelines:\n    logs:\n      receivers: [otlp]\n      exporters: [debug]"
+    extension: .yaml
+
+  - id: dockerStart
+    type: io.kestra.plugin.docker.Run
+    containerImage: otel/opentelemetry-collector:latest
+    inputFiles:
+      otel.yaml: "{{ outputs.write.uri }}"
+    commands:
+      - --config
+      - otel.yaml
+    portBindings:
+      - "{{ outputs.init.values.randomPort }}:4318"
+    wait: false
+
+  - id: parallel
+    type: io.kestra.plugin.core.flow.ForEach
+    values: [ "log_exporter" ]
+    concurrencyLimit: 0
+    tasks:
+      - id: subflow
+        type: io.kestra.plugin.core.flow.Subflow
+        namespace: "{{ flow.namespace }}"
+        flowId: "{{ taskrun.value }}"
+        wait: true
+        transmitFailed: true
+        inputs:
+          cs: "http://localhost:{{ outputs.init.values.randomPort }}"
+
+finally:
+  - id: dockerStop
+    type: io.kestra.plugin.docker.Stop
+    containerId: "{{ outputs.dockerStart.taskRunner.containerId }}"

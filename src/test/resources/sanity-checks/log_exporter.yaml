@@ -1,0 +1,35 @@
+id: log_exporter
+namespace: sanitycheck.plugin.elasticsearch
+
+inputs:
+  - id: cs
+    type: STRING
+    defaults: "http://localhost:4318"
+
+tasks:
+  - id: log
+    type: io.kestra.plugin.core.log.Log
+    message: "this is my log for the test"
+
+  - id: generate_offset_key
+    type: io.kestra.plugin.core.output.OutputValues
+    values:
+      offsetKey: "{{ uuid() }}"
+
+  - id: log_export
+    type: io.kestra.plugin.ee.core.log.LogShipper
+    logLevelFilter: INFO
+    batchSize: 1000
+    lookbackPeriod: P1D
+    namespace: sanitycheck.plugin.elasticsearch
+    offsetKey: "{{ outputs.generate_offset_key.values.offsetKey }}"
+    logExporters:
+      - id: OTLPLogExporter
+        type: io.kestra.plugin.elasticsearch.LogExporter
+        otlpEndpoint: "{{ inputs.cs }}/v1/logs"
+
+  - id: assert
+    type: io.kestra.plugin.core.execution.Assert
+    errorMessage: "Invalid export logs {{ outputs.log_export.size }}"
+    conditions:
+      - "{{ outputs.log_export.size >= 1 }}"

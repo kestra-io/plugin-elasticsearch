@@ -1,0 +1,46 @@
+id: put_get
+namespace: sanitycheck.plugin.elasticsearch
+
+inputs:
+  - id: cs
+    type: STRING
+    defaults: "http://localhost:9200"
+
+tasks:
+
+  - id: create_index
+    type: io.kestra.plugin.fs.http.Request
+    uri: "{{ inputs.cs }}/put_get_index"
+    method: PUT
+    contentType: application/json
+    body: |
+      {
+        "settings": {
+          "number_of_shards": 1,
+          "number_of_replicas": 1
+        }
+      }
+
+  - id: put
+    type: io.kestra.plugin.elasticsearch.Put
+    connection:
+      hosts:
+        - "http://localhost:9200"
+    index: "put_get_index"
+    key: "my_id"
+    value: {"name": "John Doe", "city": "Paris"}
+    refreshPolicy: IMMEDIATE
+
+  - id: get
+    type: io.kestra.plugin.elasticsearch.Get
+    connection:
+      hosts:
+        - "http://localhost:9200"
+    index: "my_index"
+    key: "my_id"
+
+  - id: assert
+    type: io.kestra.plugin.core.execution.Assert
+    errorMessage: "Invalid export logs {{ outputs.log_export.size }}"
+    conditions:
+      - "{{ outputs.log_export.size >= 1 }}"
