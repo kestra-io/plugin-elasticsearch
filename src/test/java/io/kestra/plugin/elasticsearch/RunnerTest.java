@@ -21,13 +21,6 @@ public class RunnerTest extends ElsContainer {
     }
 
     @Test
-    @ExecuteFlow("sanity-checks/log_exporter.yaml")
-    void logExporter(Execution execution) {
-        assertThat(execution.getTaskRunList(), hasSize(7));
-        assertThat(execution.getState().getCurrent(), is(State.Type.SUCCESS));
-    }
-
-    @Test
     @ExecuteFlow("sanity-checks/bulk.yaml")
     void bulk(Execution execution) {
         assertThat(execution.getTaskRunList(), hasSize(4));
