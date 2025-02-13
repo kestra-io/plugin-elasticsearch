@@ -7,26 +7,23 @@ tasks:
     values:
       randomPort: "{{ randomPort() }}"
 
-  - id: write
-    type: io.kestra.plugin.core.storage.Write
-    content: "extensions:\n  health_check: {}\n\nreceivers:\n  otlp:\n    protocols:\n      grpc:\n        endpoint: 0.0.0.0:4317\n      http:\n        endpoint: 0.0.0.0:4318\n\nexporters:\n  debug: {}\n\nservice:\n  pipelines:\n    logs:\n      receivers: [otlp]\n      exporters: [debug]"
-    extension: .yaml
-
   - id: dockerStart
     type: io.kestra.plugin.docker.Run
-    containerImage: otel/opentelemetry-collector:latest
-    inputFiles:
-      otel.yaml: "{{ outputs.write.uri }}"
-    commands:
-      - --config
-      - otel.yaml
+    containerImage: docker.elastic.co/elasticsearch/elasticsearch:8.17.2
+    env:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
     portBindings:
-      - "{{ outputs.init.values.randomPort }}:4318"
+      - "{{ outputs.init.values.randomPort }}:9200"
     wait: false
+
+  - id: sleep_10
+    type: io.kestra.plugin.core.flow.Sleep
+    duration: "PT10S"
 
   - id: parallel
     type: io.kestra.plugin.core.flow.ForEach
-    values: [ "log_exporter" ]
+    values: ["bulk" "esql" "load" "log_exporter" "put_get" "request" "scroll" "search" ]
     concurrencyLimit: 0
     tasks:
       - id: subflow

@@ -4,12 +4,28 @@ namespace: sanitycheck.plugin.elasticsearch
 inputs:
   - id: cs
     type: STRING
-    defaults: "http://localhost:4318"
+    defaults: "http://localhost:9200"
+
+variables:
+  index_name: log_exporter_index
 
 tasks:
   - id: log
     type: io.kestra.plugin.core.log.Log
     message: "this is my log for the test"
+
+  - id: create_index
+    type: io.kestra.plugin.fs.http.Request
+    uri: "{{ inputs.cs }}/{{ vars.index_name }}"
+    method: PUT
+    contentType: application/json
+    body: |
+      {
+        "settings": {
+          "number_of_shards": 1,
+          "number_of_replicas": 1
+        }
+      }
 
   - id: generate_offset_key
     type: io.kestra.plugin.core.output.OutputValues
@@ -24,12 +40,38 @@ tasks:
     namespace: sanitycheck.plugin.elasticsearch
     offsetKey: "{{ outputs.generate_offset_key.values.offsetKey }}"
     logExporters:
-      - id: OTLPLogExporter
+      - id: ELSLogExporter
         type: io.kestra.plugin.elasticsearch.LogExporter
-        otlpEndpoint: "{{ inputs.cs }}/v1/logs"
+        connection:
+          hosts:
+            - "{{ inputs.cs }}"
+        indexName: "{{ vars.index_name }}"
+
+  - id: refresh_index
+    type: io.kestra.plugin.fs.http.Request
+    uri: "{{ inputs.cs }}/{{ vars.index_name }}/_refresh"
+    method: POST
+    contentType: application/json
+
+  - id: search
+    type: io.kestra.plugin.elasticsearch.Search
+    connection:
+      hosts:
+        - "{{ inputs.cs }}"
+    indexes:
+      - "{{ vars.index_name }}"
+    request: |
+      {
+        "query": {
+          "match": {
+            "resource": "kestra"
+          }
+        }
+      }
 
   - id: assert
     type: io.kestra.plugin.core.execution.Assert
     errorMessage: "Invalid export logs {{ outputs.log_export.size }}"
     conditions:
       - "{{ outputs.log_export.size >= 1 }}"
+      - "{{ outputs.search.total >= 1 }}"

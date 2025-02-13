@@ -6,11 +6,14 @@ inputs:
     type: STRING
     defaults: "http://localhost:9200"
 
-tasks:
+variables:
+  index_name: put_get_index
+  document_key: "my_key"
 
+tasks:
   - id: create_index
     type: io.kestra.plugin.fs.http.Request
-    uri: "{{ inputs.cs }}/put_get_index"
+    uri: "{{ inputs.cs }}/{{ vars.index_name }}"
     method: PUT
     contentType: application/json
     body: |
@@ -25,9 +28,9 @@ tasks:
     type: io.kestra.plugin.elasticsearch.Put
     connection:
       hosts:
-        - "http://localhost:9200"
-    index: "put_get_index"
-    key: "my_id"
+        - "{{ inputs.cs }}"
+    index: "{{ vars.index_name }}"
+    key: "{{ vars.document_key }}"
     value: {"name": "John Doe", "city": "Paris"}
     refreshPolicy: IMMEDIATE
 
@@ -35,12 +38,16 @@ tasks:
     type: io.kestra.plugin.elasticsearch.Get
     connection:
       hosts:
-        - "http://localhost:9200"
-    index: "my_index"
-    key: "my_id"
+        - "{{ inputs.cs }}"
+    index: "{{ vars.index_name }}"
+    key: "{{ vars.document_key }}"
+    version: 1
 
   - id: assert
     type: io.kestra.plugin.core.execution.Assert
-    errorMessage: "Invalid export logs {{ outputs.log_export.size }}"
+    errorMessage: "Invalid put and get {{ outputs.put.result }}"
     conditions:
-      - "{{ outputs.log_export.size >= 1 }}"
+      - "{{ outputs.put.id == vars.document_key }}"
+      - "{{ outputs.put.result == 'Created' }}"
+      - "{{ outputs.get.row.name == 'John Doe' }}"
+      - "{{ outputs.get.row.city == 'Paris' }}"
