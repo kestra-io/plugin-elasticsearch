@@ -2,6 +2,8 @@ elasticsearch-hosts:
   - http://localhost:9200
 
 kestra:
+  repository:
+    type: memory
   storage:
     type: local
     local:

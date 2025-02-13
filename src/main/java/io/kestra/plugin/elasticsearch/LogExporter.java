@@ -55,6 +55,10 @@ import reactor.core.publisher.Flux;
                     logExporters:
                       - id: ElasticsearchLogExporter
                         type: io.kestra.plugin.elasticsearch.LogExporter
+                        connection:
+                          hosts:
+                            - "http://localhost:9200/"
+                        indexName: "logs"
                 """,
             full = true
         )
