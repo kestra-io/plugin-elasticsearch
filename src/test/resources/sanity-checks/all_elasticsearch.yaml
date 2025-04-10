@@ -17,9 +17,9 @@ tasks:
       - "{{ outputs.init.values.randomPort }}:9200"
     wait: false
 
-  - id: sleep_10
+  - id: sleep_45
     type: io.kestra.plugin.core.flow.Sleep
-    duration: "PT10S"
+    duration: "PT45S"
 
   - id: parallel
     type: io.kestra.plugin.core.flow.ForEach
