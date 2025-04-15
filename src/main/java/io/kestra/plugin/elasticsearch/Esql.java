@@ -41,8 +41,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Query Elasticsearch using ES|QL.",
-    description = "This task allows you to query Elasticsearch using ES|QL."
+    title = "Query Elasticsearch using ES|QL."
 )
 @Plugin(
     examples = {

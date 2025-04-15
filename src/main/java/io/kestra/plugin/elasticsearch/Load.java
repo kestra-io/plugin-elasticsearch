@@ -29,7 +29,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Bulk load documents in ElasticSearch using Kestra Internal Storage file."
+    title = "Bulk load documents in ElasticSearch using a Kestra Internal Storage file."
 )
 @Plugin(
     examples = {
