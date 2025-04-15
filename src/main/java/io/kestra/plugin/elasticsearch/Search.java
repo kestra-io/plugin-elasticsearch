@@ -36,7 +36,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Send a search request.",
+    title = "Send a search request to an Elasticsearch cluster.",
     description = "Get all documents from a search request and store it as outputs."
 )
 @Plugin(

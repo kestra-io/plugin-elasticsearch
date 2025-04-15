@@ -31,8 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Scroll over search request.",
-    description = "Get all documents from a search request and store it as Kestra Internal Storage file."
+    title = "Get all documents from a search request and store it as a Kestra Internal Storage file."
 )
 @Plugin(
     examples = {

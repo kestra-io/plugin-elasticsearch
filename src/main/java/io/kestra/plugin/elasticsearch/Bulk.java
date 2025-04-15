@@ -31,7 +31,8 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Bulk load documents in ElasticSearch using [bulk files](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html) elastic files."
+    title = "Bulk load documents in ElasticSearch using bulk elastic files.",
+    description = "Read more about Elastic bulk files in their [official documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html)."
 )
 @Plugin(
     examples = {
