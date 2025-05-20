@@ -9,6 +9,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.core.storages.StorageInterface;
+import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.IdUtils;
 import jakarta.inject.Inject;
 import java.io.File;
@@ -56,7 +57,7 @@ class BulkTest extends ElsContainer {
                 )));
         }
 
-        URI uri = storageInterface.put(null, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
+        URI uri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
 
         Bulk put = Bulk.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
@@ -83,7 +84,7 @@ class BulkTest extends ElsContainer {
                 .forEach(throwConsumer(s -> FileSerde.write(output, s)));
         }
 
-        URI uri = storageInterface.put(null, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
+        URI uri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
 
         Bulk put = Bulk.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())

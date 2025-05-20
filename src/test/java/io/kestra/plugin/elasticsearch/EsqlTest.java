@@ -9,6 +9,7 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.storages.StorageInterface;
+import io.kestra.core.tenant.TenantService;
 import jakarta.inject.Inject;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -104,7 +105,7 @@ class EsqlTest extends ElsContainer{
         assertThat(run.getTotal(), is(10L));
         assertThat(run.getUri(), notNullValue());
 
-        BufferedReader inputStream = new BufferedReader(new InputStreamReader(storageInterface.get(null, null, run.getUri())));
+        BufferedReader inputStream = new BufferedReader(new InputStreamReader(storageInterface.get(TenantService.MAIN_TENANT, null, run.getUri())));
         List<Map<String, Object>> result = new ArrayList<>();
         FileSerde.reader(inputStream, r -> result.add((Map<String, Object>) r));
 
