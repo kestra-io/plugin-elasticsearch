@@ -2,6 +2,8 @@ package io.kestra.plugin.elasticsearch;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.google.common.collect.ImmutableMap;
 import io.kestra.core.models.property.Property;
@@ -56,4 +58,56 @@ class PutGetTest extends ElsContainer {
 
         assertThat(runOutput.getRow().get("name"), is("Jane Doe"));
     }
+
+
+    @Test
+    void shouldThrowWhenDocumentNotFound() throws Exception {
+        RunContext runContext = runContextFactory.of(ImmutableMap.of("variable", Map.of("name", "John Doe")));
+        String indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+
+        Put put = Put.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .index(Property.ofValue(indice))
+            .value("{{ variable }}")
+            .build();
+
+        put.run(runContext);
+
+        Get get = Get.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .index(Property.ofValue(indice))
+            .key(Property.ofValue(IdUtils.create()))
+            .errorOnMissing(Property.ofValue(true))
+            .build();
+
+        assertThrows(IllegalStateException.class, () -> {
+            get.run(runContext);
+        });
+    }
+
+    @Test
+    void shouldSucceedWhenDocumentNotFound() throws Exception {
+        RunContext runContext = runContextFactory.of(ImmutableMap.of("variable", Map.of("name", "John Doe")));
+        String indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+
+        Put put = Put.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .index(Property.ofValue(indice))
+            .value("{{ variable }}")
+            .build();
+
+        put.run(runContext);
+
+        Get get = Get.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .index(Property.ofValue(indice))
+            .key(Property.ofValue(IdUtils.create()))
+            .errorOnMissing(Property.ofValue(false))
+            .build();
+
+        Get.Output runOutput = get.run(runContext);
+
+        assertThat(runOutput.getRow(), is(nullValue()));
+    }
 }
+
