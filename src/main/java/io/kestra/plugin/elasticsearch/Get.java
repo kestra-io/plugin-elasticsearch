@@ -62,8 +62,13 @@ public class Get extends AbstractTask implements RunnableTask<Get.Output> {
         title = "Current version of the document",
         description = " The specified version must match the current version of the document for the GET request to succeed."
     )
-    @NotNull
     private Property<Long> docVersion;
+
+    @Schema(
+        title = "Raise an error if the document is not found."
+    )
+    @Builder.Default
+    private Property<Boolean> errorOnMissing = Property.ofValue(false);
 
     @Override
     public Get.Output run(RunContext runContext) throws Exception {
@@ -86,6 +91,10 @@ public class Get extends AbstractTask implements RunnableTask<Get.Output> {
 
             GetResponse<Map> response = client.get(request.build(), Map.class);
             logger.debug("Getting doc: {}", request);
+
+            if (!response.found() && runContext.render(this.errorOnMissing).as(Boolean.class).orElse(false)) {
+                throw new IllegalStateException("Document with key '" + key + "' not found in index '" + index + "'");
+            }
 
             return Output.builder()
                 .row(response.source())
