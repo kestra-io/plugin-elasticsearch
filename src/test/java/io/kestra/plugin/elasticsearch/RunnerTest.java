@@ -56,7 +56,7 @@ public class RunnerTest extends ElsContainer {
     }
 
     @Test
-    @ExecuteFlow("sanity-checks/search.yaml")
+    @ExecuteFlow("sanity-checks/searching.yaml")
     void search(Execution execution) {
         assertThat(execution.getTaskRunList(), hasSize(4));
         assertThat(execution.getState().getCurrent(), is(State.Type.SUCCESS));

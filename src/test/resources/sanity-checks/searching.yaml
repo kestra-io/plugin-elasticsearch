@@ -1,4 +1,4 @@
-id: search
+id: searching
 namespace: sanitycheck.plugin-elasticsearch
 
 inputs:
