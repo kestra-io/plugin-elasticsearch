@@ -1,7 +1,6 @@
 package io.kestra.plugin.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
@@ -9,6 +8,10 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.runners.RunContextFactory;
 import io.micronaut.context.annotation.Value;
 import jakarta.inject.Inject;
+import lombok.SneakyThrows;
+import org.testcontainers.elasticsearch.ElasticsearchContainer;
+import org.testcontainers.utility.DockerImageName;
+
 import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpClient;
@@ -18,20 +21,14 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import lombok.SneakyThrows;
-import org.apache.http.HttpHost;
-import org.elasticsearch.client.RestClient;
-import org.testcontainers.elasticsearch.ElasticsearchContainer;
-import org.testcontainers.utility.DockerImageName;
 
 @KestraTest
 public class ElsContainer {
-
     private static final ElasticsearchContainer elasticsearchContainer;
     protected static ElasticsearchClient elasticsearchClient;
 
     static {
-        elasticsearchContainer = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch:8.17.2"))
+        elasticsearchContainer = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch:9.1.3"))
             .withEnv("discovery.type", "single-node")
             .withEnv("xpack.security.enabled", "false")
             .withExposedPorts(9200)
@@ -48,12 +45,8 @@ public class ElsContainer {
 
         loadGBitIndex();
 
-        RestClient restClient = RestClient.builder(
-            HttpHost.create(elasticsearchContainer.getHttpHostAddress())
-        ).build();
-
-        elasticsearchClient = new ElasticsearchClient(
-            new RestClientTransport(restClient, new co.elastic.clients.json.jackson.JacksonJsonpMapper())
+        elasticsearchClient = ElasticsearchClient.of(b -> b
+            .host("http://" + elasticsearchContainer.getHttpHostAddress())
         );
     }
 
@@ -77,7 +70,7 @@ public class ElsContainer {
         HttpClient client = HttpClient.newHttpClient();
         String bulkContent = Files.readString(Path.of(url.toURI()));
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:9200/_bulk"))
+            .uri(URI.create("http://" + elasticsearchContainer.getHttpHostAddress()  + "/_bulk"))
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(bulkContent))
             .build();
@@ -87,10 +80,10 @@ public class ElsContainer {
         }
 
         client.send(HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:9200/gbit/_refresh"))
+            .uri(URI.create("http://" + elasticsearchContainer.getHttpHostAddress()  + "/gbit/_refresh"))
             .POST(HttpRequest.BodyPublishers.noBody())
             .header("Content-Type", "application/json")
-            .build(), HttpResponse.BodyHandlers.ofString());
+            .build(), BodyHandlers.ofString());
     }
 
 }

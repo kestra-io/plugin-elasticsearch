@@ -3,19 +3,18 @@ package io.kestra.plugin.elasticsearch;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.GetRequest;
 import co.elastic.clients.elasticsearch.core.GetResponse;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
 import java.util.Map;
-import jakarta.validation.constraints.NotNull;
 
 @SuperBuilder
 @ToString
@@ -75,8 +74,7 @@ public class Get extends AbstractTask implements RunnableTask<Get.Output> {
     @Override
     public Get.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
-        try (RestClientTransport transport = this.connection.client(runContext)) {
-            ElasticsearchClient client = new ElasticsearchClient(transport);
+        try (ElasticsearchClient client = this.connection.highLevelClient(runContext)) {
             String index = runContext.render(this.index).as(String.class).orElseThrow();
             String key = runContext.render(this.key).as(String.class).orElseThrow();
 

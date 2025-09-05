@@ -2,9 +2,8 @@ package io.kestra.plugin.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.esql.EsqlFormat;
 import co.elastic.clients.elasticsearch.esql.QueryRequest;
-import co.elastic.clients.elasticsearch.esql.query.EsqlFormat;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.collect.Iterables;
 import io.kestra.core.models.annotations.Example;
@@ -30,7 +29,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -122,9 +122,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     public Esql.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        try (RestClientTransport transport = this.connection.client(runContext)) {
-            ElasticsearchClient client = new ElasticsearchClient(transport);
-
+        try (ElasticsearchClient client = this.connection.highLevelClient(runContext)) {
             // build request
             QueryRequest queryRequest = QueryRequest.of(throwFunction(builder -> {
                     builder.query(runContext.render(this.query).as(String.class).orElseThrow());
