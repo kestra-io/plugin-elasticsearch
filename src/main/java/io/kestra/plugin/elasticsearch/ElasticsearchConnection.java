@@ -1,44 +1,41 @@
 package io.kestra.plugin.elasticsearch;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import co.elastic.clients.transport.instrumentation.NoopInstrumentation;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.JacksonMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.experimental.SuperBuilder;
-import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.TrustStrategy;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.ssl.SSLContextBuilder;
-
-import java.net.URI;
-import java.util.List;
-import javax.net.ssl.SSLContext;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
+import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
+import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
+import org.apache.hc.client5.http.ssl.TrustAllStrategy;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.message.BasicHeader;
+import org.apache.hc.core5.ssl.SSLContexts;
+
+import java.net.URI;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
+import javax.net.ssl.SSLContext;
 
 @SuperBuilder
 @NoArgsConstructor
 @Getter
 public class ElasticsearchConnection {
-    private static final ObjectMapper MAPPER = JacksonMapper.ofJson(false);
 
     @Schema(
         title = "Elasticsearch hosts",
@@ -97,13 +94,29 @@ public class ElasticsearchConnection {
         private Property<String> password;
     }
 
-    RestClientTransport client(RunContext runContext) throws IllegalVariableEvaluationException {
-        RestClientBuilder builder = RestClient
+    Rest5Client client(RunContext runContext) throws IllegalVariableEvaluationException {
+        PoolingAsyncClientConnectionManagerBuilder connectionManagerBuilder = PoolingAsyncClientConnectionManagerBuilder.create();
+        if (runContext.render(this.trustAllSsl).as(Boolean.class).orElse(false)) {
+            try {
+                SSLContext sslContext = SSLContexts.custom()
+                    .loadTrustMaterial(null, TrustAllStrategy.INSTANCE)
+                    .build();
+
+                connectionManagerBuilder.setTlsStrategy(new DefaultClientTlsStrategy(sslContext, NoopHostnameVerifier.INSTANCE));
+            } catch (KeyManagementException | NoSuchAlgorithmException | KeyStoreException e) {
+                throw new IllegalArgumentException(e);
+            }
+        }
+
+        HttpAsyncClientBuilder httpClientBuilder = HttpAsyncClientBuilder.create()
+            .setConnectionManager(connectionManagerBuilder.build());
+
+        httpClientBuilder.setUserAgent("Kestra/" + runContext.version());
+
+        Rest5ClientBuilder builder = Rest5Client
             .builder(this.httpHosts(runContext))
-            .setHttpClientConfigCallback(httpClientBuilder -> {
-                httpClientBuilder = this.httpAsyncClientBuilder(runContext);
-                return httpClientBuilder;
-            });
+            .setHttpClientConfigCallback(client -> httpClientBuilder.build());
+
 
         if (this.getHeaders() != null) {
             builder.setDefaultHeaders(this.defaultHeaders(runContext));
@@ -117,39 +130,15 @@ public class ElasticsearchConnection {
             builder.setStrictDeprecationMode(runContext.render(this.strictDeprecationMode).as(Boolean.class).get());
         }
 
-        return new RestClientTransport(builder.build(), new JacksonJsonpMapper(MAPPER), null,
-            NoopInstrumentation.INSTANCE);
+
+        return builder.build();
     }
 
-    @SneakyThrows
-    private HttpAsyncClientBuilder httpAsyncClientBuilder(RunContext runContext) {
-        HttpAsyncClientBuilder builder = HttpAsyncClientBuilder.create();
+    public ElasticsearchClient highLevelClient(RunContext runContext) throws IllegalVariableEvaluationException {
+        Rest5Client lowLevelClient = client(runContext);
+        Rest5ClientTransport transport = new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
 
-        builder.setUserAgent("Kestra/" + runContext.version());
-
-        if (basicAuth != null) {
-            final CredentialsProvider basicCredential = new BasicCredentialsProvider();
-            basicCredential.setCredentials(
-                AuthScope.ANY,
-                new UsernamePasswordCredentials(
-                    runContext.render(this.basicAuth.username).as(String.class).orElseThrow(),
-                    runContext.render(this.basicAuth.password).as(String.class).orElseThrow()
-                )
-            );
-
-            builder.setDefaultCredentialsProvider(basicCredential);
-        }
-
-        if (runContext.render(this.trustAllSsl).as(Boolean.class).orElse(false)) {
-            SSLContextBuilder sslContextBuilder = new SSLContextBuilder();
-            sslContextBuilder.loadTrustMaterial(null, (TrustStrategy) (chain, authType) -> true);
-            SSLContext sslContext = sslContextBuilder.build();
-
-            builder.setSSLContext(sslContext);
-            builder.setSSLHostnameVerifier(new NoopHostnameVerifier());
-        }
-
-        return builder;
+        return new ElasticsearchClient(transport);
     }
 
     private HttpHost[] httpHosts(RunContext runContext) throws IllegalVariableEvaluationException {
@@ -157,7 +146,7 @@ public class ElasticsearchConnection {
             .stream()
             .map(s -> {
                 URI uri = URI.create(s);
-                return new HttpHost(uri.getHost(), uri.getPort(), uri.getScheme());
+                return new HttpHost(uri.getScheme(), uri.getHost(), uri.getPort());
             })
             .toArray(HttpHost[]::new);
     }

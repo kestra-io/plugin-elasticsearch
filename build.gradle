@@ -56,15 +56,8 @@ dependencies {
 
     // Libs
     api ("co.elastic.clients:elasticsearch-java:$elasticsearchVersion") {
-        exclude group: 'org.apache.logging.log4j'
+        exclude group: 'org.apache.httpcomponents.client5'
     }
-    api ("org.elasticsearch.client:elasticsearch-rest-client:$elasticsearchVersion") {
-        exclude group: 'org.apache.logging.log4j'
-    }
-    compileOnly ("com.fasterxml.jackson.core:jackson-databind")
-
-    // Logs
-    compileOnly'org.slf4j:slf4j-api'
 }
 
 

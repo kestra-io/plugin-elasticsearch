@@ -1,6 +1,7 @@
 package io.kestra.plugin.elasticsearch;
 
-import co.elastic.clients.transport.rest_client.RestClientTransport;
+import co.elastic.clients.transport.rest5_client.low_level.Response;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import com.google.common.base.Charsets;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -15,9 +16,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.apache.commons.io.IOUtils;
-import org.apache.http.client.entity.EntityBuilder;
-import org.apache.http.entity.ContentType;
-import org.elasticsearch.client.Response;
+import org.apache.hc.client5.http.entity.EntityBuilder;
+import org.apache.hc.core5.http.ContentType;
 import org.slf4j.Logger;
 
 import java.util.Map;
@@ -123,8 +123,8 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
     @Override
     public Request.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
-        try (RestClientTransport transport = this.connection.client(runContext)) {
-            org.elasticsearch.client.Request request = new org.elasticsearch.client.Request(
+        try (Rest5Client client = this.connection.client(runContext)) {
+            co.elastic.clients.transport.rest5_client.low_level.Request request = new co.elastic.clients.transport.rest5_client.low_level.Request(
                 runContext.render(method).as(HttpMethod.class).orElseThrow().name(),
                 runContext.render(endpoint).as(String.class).orElseThrow()
             );
@@ -148,7 +148,7 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
 
             logger.debug("Starting request: {}", request);
 
-            Response response = transport.restClient().performRequest(request);
+            Response response = client.performRequest(request);
 
             response.getWarnings().forEach(logger::warn);
 
@@ -156,7 +156,7 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
             String content = IOUtils.toString(response.getEntity().getContent(), Charsets.UTF_8);
 
             Output.OutputBuilder builder = Output.builder()
-                .status(response.getStatusLine().getStatusCode());
+                .status(response.getStatusCode());
 
             if (contentType.contains("application/json")) {
                 builder.response = JacksonMapper.toMap(content);

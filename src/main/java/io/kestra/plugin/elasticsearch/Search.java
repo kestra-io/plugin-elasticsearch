@@ -3,11 +3,9 @@ package io.kestra.plugin.elasticsearch;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
-import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.executions.metrics.Timer;
 import io.kestra.core.models.property.Property;
@@ -22,7 +20,10 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import reactor.core.publisher.Flux;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -82,8 +83,7 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
     public Search.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        try (RestClientTransport transport = this.connection.client(runContext)) {
-            ElasticsearchClient client = new ElasticsearchClient(transport);
+        try (ElasticsearchClient client = this.connection.highLevelClient(runContext)) {
             // build request
             SearchRequest.Builder request = this.request(runContext);
             logger.debug("Starting query: {}", request);

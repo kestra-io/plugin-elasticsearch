@@ -4,7 +4,6 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.Time;
 import co.elastic.clients.elasticsearch.core.*;
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -52,12 +51,12 @@ import java.util.concurrent.atomic.AtomicLong;
                   - id: scroll
                     type: io.kestra.plugin.elasticsearch.Scroll
                     connection:
-                      hosts: 
+                      hosts:
                         - "http://localhost:9200"
                     indexes:
                       - "my_index"
                     request:
-                      query: 
+                      query:
                         term:
                           name:
                             value: 'john'
@@ -72,10 +71,9 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
 
         try (
-                RestClientTransport transport = this.connection.client(runContext);
-                Writer output = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)
+            ElasticsearchClient client = this.connection.highLevelClient(runContext);
+            Writer output = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)
         ) {
-            ElasticsearchClient client = new ElasticsearchClient(transport);
             // build request
             SearchRequest.Builder request = this.request(runContext);
 
