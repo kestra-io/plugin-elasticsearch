@@ -99,7 +99,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     )
     @Builder.Default
     @NotNull
-    private Property<FetchType> fetchType = Property.of(FetchType.FETCH);
+    private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
     @Schema(
         title = "The ElasticSearch value.",

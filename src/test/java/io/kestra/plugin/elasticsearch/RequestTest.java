@@ -21,9 +21,9 @@ class RequestTest extends ElsContainer {
 
         Request request = Request.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .method(Property.of(HttpMethod.POST))
-            .endpoint(Property.of(indice + "/_doc/" + IdUtils.create()))
-            .parameters(Property.of(Map.of("human", "true")))
+            .method(Property.ofValue(HttpMethod.POST))
+            .endpoint(Property.ofValue(indice + "/_doc/" + IdUtils.create()))
+            .parameters(Property.ofValue(Map.of("human", "true")))
             .body(Map.of("name", "john"))
             .build();
 
@@ -39,8 +39,8 @@ class RequestTest extends ElsContainer {
 
         Request request = Request.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .method(Property.of(HttpMethod.GET))
-            .endpoint(Property.of("_cat/indices"))
+            .method(Property.ofValue(HttpMethod.GET))
+            .endpoint(Property.ofValue("_cat/indices"))
             .build();
 
         Request.Output runOutput = request.run(runContext);

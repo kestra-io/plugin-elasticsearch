@@ -30,7 +30,7 @@ class SearchTest extends ElsContainer {
 
         Search task = Search.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .indexes(Property.of(Collections.singletonList("gbif")))
+            .indexes(Property.ofValue(Collections.singletonList("gbif")))
             .request("""
                 {
                     "query": {
@@ -53,7 +53,7 @@ class SearchTest extends ElsContainer {
 
         Search task = Search.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .indexes(Property.of(Collections.singletonList("gbif")))
+            .indexes(Property.ofValue(Collections.singletonList("gbif")))
             .request("""
                 {
                     "query": {
@@ -65,7 +65,7 @@ class SearchTest extends ElsContainer {
                         "key": "asc"
                     }
                 }""")
-            .fetchType(Property.of(FetchType.FETCH_ONE))
+            .fetchType(Property.ofValue(FetchType.FETCH_ONE))
             .build();
 
         Search.Output run = task.run(runContext);
@@ -82,7 +82,7 @@ class SearchTest extends ElsContainer {
 
         Search task = Search.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .indexes(Property.of(Collections.singletonList("gbif")))
+            .indexes(Property.ofValue(Collections.singletonList("gbif")))
             .request("""
                 {
                     "query": {
@@ -91,7 +91,7 @@ class SearchTest extends ElsContainer {
                         }
                     }
                 }""")
-            .fetchType(Property.of(FetchType.STORE))
+            .fetchType(Property.ofValue(FetchType.STORE))
             .build();
 
         Search.Output run = task.run(runContext);

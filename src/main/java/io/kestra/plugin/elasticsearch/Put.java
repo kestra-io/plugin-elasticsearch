@@ -112,13 +112,13 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
         description = "an immediate refresh `IMMEDIATE`, wait for a refresh `WAIT_UNTIL`, or proceed ignore refreshes entirely `NONE`."
     )
     @Builder.Default
-    private Property<RefreshPolicy> refreshPolicy = Property.of(RefreshPolicy.NONE);
+    private Property<RefreshPolicy> refreshPolicy = Property.ofValue(RefreshPolicy.NONE);
 
     @Schema(
         title = "The content type of `value`."
     )
     @Builder.Default
-    private Property<XContentType> contentType = Property.of(XContentType.JSON);
+    private Property<XContentType> contentType = Property.ofValue(XContentType.JSON);
 
     @Override
     public Put.Output run(RunContext runContext) throws Exception {

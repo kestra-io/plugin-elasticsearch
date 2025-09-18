@@ -29,7 +29,7 @@ class EsqlTest extends ElsContainer{
 
         Esql task = Esql.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .query(Property.of("""
+            .query(Property.ofValue("""
                 FROM gbif
                 | WHERE key == 925277090
                 """))
@@ -47,7 +47,7 @@ class EsqlTest extends ElsContainer{
 
         Esql task = Esql.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .query(Property.of("FROM gbif"))
+            .query(Property.ofValue("FROM gbif"))
             .filter("""
                 {
                     "query": {
@@ -70,11 +70,11 @@ class EsqlTest extends ElsContainer{
 
         Esql task = Esql.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .query(Property.of("""
+            .query(Property.ofValue("""
                 FROM gbif
                 | WHERE publishingCountry.keyword == "BE"
                 """))
-            .fetchType(Property.of(FetchType.FETCH_ONE))
+            .fetchType(Property.ofValue(FetchType.FETCH_ONE))
             .build();
 
         Esql.Output run = task.run(runContext);
@@ -91,12 +91,12 @@ class EsqlTest extends ElsContainer{
 
         Esql task = Esql.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .query(Property.of("""
+            .query(Property.ofValue("""
                 FROM gbif
                 | WHERE publishingCountry.keyword == "BE"
                 | LIMIT 10
                 """))
-            .fetchType(Property.of(FetchType.STORE))
+            .fetchType(Property.ofValue(FetchType.STORE))
             .build();
 
         Esql.Output run = task.run(runContext);

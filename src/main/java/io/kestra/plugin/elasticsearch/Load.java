@@ -77,7 +77,7 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
         title = "Remove idKey from the final document."
     )
     @Builder.Default
-    private Property<Boolean> removeIdKey = Property.of(true);
+    private Property<Boolean> removeIdKey = Property.ofValue(true);
 
     @SuppressWarnings("unchecked")
     @Override

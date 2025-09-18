@@ -42,10 +42,10 @@ class LoadTest extends ElsContainer {
 
         Load put = Load.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .index(Property.of(indice))
+            .index(Property.ofValue(indice))
             .from(uri.toString())
-            .chunk(Property.of(10))
-            .idKey(Property.of("id"))
+            .chunk(Property.ofValue(10))
+            .idKey(Property.ofValue("id"))
             .build();
 
         Load.Output runOutput = put.run(runContext);

@@ -16,7 +16,7 @@ class ScrollTest extends ElsContainer {
 
         Scroll task = Scroll.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .indexes(Property.of(Collections.singletonList("gbif")))
+            .indexes(Property.ofValue(Collections.singletonList("gbif")))
             .request("""
                 {
                     "query": {
@@ -38,7 +38,7 @@ class ScrollTest extends ElsContainer {
 
         Scroll task = Scroll.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .indexes(Property.of(Collections.singletonList("gbif")))
+            .indexes(Property.ofValue(Collections.singletonList("gbif")))
             .request("""
                 {
                     "query": {

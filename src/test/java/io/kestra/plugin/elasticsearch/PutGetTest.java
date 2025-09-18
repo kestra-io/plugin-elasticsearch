@@ -22,7 +22,7 @@ class PutGetTest extends ElsContainer {
 
         Put put = Put.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .index(Property.of(indice))
+            .index(Property.ofValue(indice))
             .value("{{ variable }}")
             .build();
 
@@ -30,8 +30,8 @@ class PutGetTest extends ElsContainer {
 
         Get task = Get.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .index(Property.of(indice))
-            .key(Property.of(putOutput.getId()))
+            .index(Property.ofValue(indice))
+            .key(Property.ofValue(putOutput.getId()))
             .build();
 
         Get.Output runOutput = task.run(runContext);
@@ -40,7 +40,7 @@ class PutGetTest extends ElsContainer {
 
         put = Put.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .index(Property.of(indice))
+            .index(Property.ofValue(indice))
             .value(Map.of(
                 "name", "Jane Doe"
             ))
@@ -50,8 +50,8 @@ class PutGetTest extends ElsContainer {
 
         task = Get.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .index(Property.of(indice))
-            .key(Property.of(putOutput.getId()))
+            .index(Property.ofValue(indice))
+            .key(Property.ofValue(putOutput.getId()))
             .build();
 
         runOutput = task.run(runContext);

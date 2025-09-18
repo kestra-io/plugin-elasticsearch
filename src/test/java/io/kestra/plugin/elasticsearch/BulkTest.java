@@ -62,7 +62,7 @@ class BulkTest extends ElsContainer {
         Bulk put = Bulk.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .from(uri.toString())
-            .chunk(Property.of(10))
+            .chunk(Property.ofValue(10))
             .build();
 
         Bulk.Output runOutput = put.run(runContext);
@@ -89,7 +89,7 @@ class BulkTest extends ElsContainer {
         Bulk put = Bulk.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .from(uri.toString())
-            .chunk(Property.of(10))
+            .chunk(Property.ofValue(10))
             .build();
 
         Bulk.Output runOutput = put.run(runContext);

@@ -73,7 +73,7 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
             + "NONE do nothing."
     )
     @Builder.Default
-    private Property<FetchType> fetchType = Property.of(FetchType.FETCH);
+    private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
     @Override
     public Search.Output run(RunContext runContext) throws Exception {

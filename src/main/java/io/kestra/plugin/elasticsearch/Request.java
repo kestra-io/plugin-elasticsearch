@@ -96,7 +96,7 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
         title = "The http method to use."
     )
     @Builder.Default
-    protected Property<HttpMethod> method = Property.of(HttpMethod.GET);
+    protected Property<HttpMethod> method = Property.ofValue(HttpMethod.GET);
 
     @Schema(
         title = "The path of the request (without scheme, host, port, or prefix)."
