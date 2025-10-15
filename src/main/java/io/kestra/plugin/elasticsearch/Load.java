@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import co.elastic.clients.elasticsearch.core.bulk.IndexOperation;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
@@ -32,6 +33,11 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
     title = "Bulk load documents in ElasticSearch using a Kestra Internal Storage file."
 )
 @Plugin(
+    metrics = {
+        @Metric(name = "requests.count", description = "Number of bulk requests sent", type = Counter.TYPE),
+        @Metric(name = "records", description = "Number of records loaded", type = Counter.TYPE),
+        @Metric(name = "requests.duration", description = "Duration of bulk requests", type = Timer.TYPE)
+    },
     examples = {
         @Example(
             full = true,

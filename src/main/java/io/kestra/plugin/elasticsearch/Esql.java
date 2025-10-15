@@ -8,6 +8,7 @@ import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.collect.Iterables;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
@@ -44,6 +45,10 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
     title = "Query Elasticsearch using ES|QL."
 )
 @Plugin(
+    metrics = {
+        @Metric(name = "requests.count", description = "Number of ES|QL requests sent", type = Counter.TYPE),
+        @Metric(name = "records", description = "Number of records returned", type = Counter.TYPE)
+    },
     examples = {
         @Example(
             title = "Load data in bulk to Elasticsearch and query it using ES|QL.",

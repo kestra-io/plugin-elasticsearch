@@ -5,6 +5,7 @@ import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
@@ -40,6 +41,11 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
     description = "Get all documents from a search request and store it as outputs."
 )
 @Plugin(
+    metrics = {
+        @Metric(name = "requests.count", description = "Number of search requests sent", type = Counter.TYPE),
+        @Metric(name = "records", description = "Number of records returned", type = Counter.TYPE),
+        @Metric(name = "requests.duration", description = "Duration of search requests", type = Timer.TYPE)
+    },
     examples = {
         @Example(
             full = true,
