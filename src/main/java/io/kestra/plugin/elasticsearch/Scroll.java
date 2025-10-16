@@ -6,6 +6,7 @@ import co.elastic.clients.elasticsearch.core.*;
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.executions.metrics.Timer;
@@ -34,6 +35,11 @@ import java.util.concurrent.atomic.AtomicLong;
     title = "Get all documents from a search request and store it as a Kestra Internal Storage file."
 )
 @Plugin(
+    metrics = {
+        @Metric(name = "requests.count", type = Counter.TYPE, description = "Number of scroll requests sent"),
+        @Metric(name = "records", type = Counter.TYPE, unit = "records", description = "Number of records returned"),
+        @Metric(name = "requests.duration", type = Timer.TYPE, description = "Duration of scroll requests")
+    },
     examples = {
         @Example(
             full = true,
