@@ -46,8 +46,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 )
 @Plugin(
     metrics = {
-        @Metric(name = "requests.count", description = "Number of ES|QL requests sent", type = Counter.TYPE),
-        @Metric(name = "records", description = "Number of records returned", type = Counter.TYPE)
+        @Metric(name = "requests.count", type = Counter.TYPE, description = "Number of ES|QL requests sent"),
+        @Metric(name = "records", type = Counter.TYPE, unit = "records", description = "Number of records returned")
     },
     examples = {
         @Example(

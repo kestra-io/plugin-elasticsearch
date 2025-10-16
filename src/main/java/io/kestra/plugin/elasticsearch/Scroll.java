@@ -36,9 +36,9 @@ import java.util.concurrent.atomic.AtomicLong;
 )
 @Plugin(
     metrics = {
-        @Metric(name = "requests.count", description = "Number of scroll requests sent", type = Counter.TYPE),
-        @Metric(name = "records", description = "Number of records returned", type = Counter.TYPE),
-        @Metric(name = "requests.duration", description = "Duration of scroll requests", type = Timer.TYPE)
+        @Metric(name = "requests.count", type = Counter.TYPE, description = "Number of scroll requests sent"),
+        @Metric(name = "records", type = Counter.TYPE, unit = "records", description = "Number of records returned"),
+        @Metric(name = "requests.duration", type = Timer.TYPE, description = "Duration of scroll requests")
     },
     examples = {
         @Example(

@@ -42,9 +42,9 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 )
 @Plugin(
     metrics = {
-        @Metric(name = "requests.count", description = "Number of search requests sent", type = Counter.TYPE),
-        @Metric(name = "records", description = "Number of records returned", type = Counter.TYPE),
-        @Metric(name = "requests.duration", description = "Duration of search requests", type = Timer.TYPE)
+        @Metric(name = "requests.count", type = Counter.TYPE, description = "Number of search requests sent"),
+        @Metric(name = "records", type = Counter.TYPE, unit = "records", description = "Number of records returned"),
+        @Metric(name = "requests.duration", type = Timer.TYPE, description = "Duration of search requests")
     },
     examples = {
         @Example(
