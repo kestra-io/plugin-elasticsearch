@@ -1,0 +1,8 @@
+group: io.kestra.plugin.elasticsearch
+name: "elasticsearch"
+title: "Elasticsearch"
+description: "This sub-group of plugins contains tasks for using ElasticSearch. ElasticSearch is a distributed, RESTful search and analytics engine capable of addressing a growing number of use cases."
+body: ""
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"
