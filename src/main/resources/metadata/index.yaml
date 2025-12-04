@@ -1,8 +1,8 @@
 group: io.kestra.plugin.elasticsearch
 name: "elasticsearch"
 title: "Elasticsearch"
-description: "This sub-group of plugins contains tasks for using ElasticSearch. ElasticSearch is a distributed, RESTful search and analytics engine capable of addressing a growing number of use cases."
-body: ""
+description: "Tasks that query and write to Elasticsearch clusters for search, indexing, bulk ingestion, and ES|QL."
+body: "Configure a shared connection with cluster hosts (and optional basic auth, headers, path prefixes, or trust-all SSL) and supply index names plus search DSL or ES|QL payloads to run. Covers single-document writes and reads, bulk/streaming ingestion, REST requests, and search or scroll operations with controls for routing, refresh policy, and storing or fetching results for downstream steps."
 videos: []
 createdBy: "Kestra Core Team"
 managedBy: "Kestra Core Team"
