@@ -1,7 +1,7 @@
 package io.kestra.plugin.elasticsearch.model;
 
 /**
- * HTTP methods.
+ * HTTP methods accepted by Elasticsearch endpoints.
  */
 public enum HttpMethod {
     CONNECT,

@@ -32,7 +32,8 @@ import jakarta.validation.constraints.NotNull;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Insert a document into an ElasticSearch cluster."
+    title = "Index a document",
+    description = "Indexes or creates a single document in an Elasticsearch index. Accepts a Map or JSON string for `value`. Default refresh policy is `NONE`; routing and opType are optional."
 )
 @Plugin(
     examples = {
@@ -85,37 +86,40 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
     private static ObjectMapper MAPPER = JacksonMapper.ofJson();
 
     @Schema(
-        title = "The elasticsearch index."
+        title = "Target index"
     )
     @NotNull
     private Property<String> index;
 
     @Schema(
-        title = "Sets the type of operation to perform."
+        title = "Operation type",
+        description = "Allowed: INDEX or CREATE."
     )
     private Property<OpType> opType;
 
     @Schema(
-        title = "The elasticsearch id."
+        title = "Document id",
+        description = "Optional `_id`; if omitted, Elasticsearch auto-generates one."
     )
     private Property<String> key;
 
     @Schema(
-        title = "The elasticsearch value.",
-        description = "Can be a string. In this case, the contentType will be used or a raw Map."
+        title = "Document body",
+        description = "Map or JSON string rendered at runtime and sent as the document source."
     )
     @PluginProperty(dynamic = true)
     private Object value;
 
     @Schema(
-        title = "Should this request trigger a refresh.",
-        description = "an immediate refresh `IMMEDIATE`, wait for a refresh `WAIT_UNTIL`, or proceed ignore refreshes entirely `NONE`."
+        title = "Refresh policy",
+        description = "When to refresh the index after indexing: `IMMEDIATE`, `WAIT_UNTIL`, or `NONE` (default)."
     )
     @Builder.Default
     private Property<RefreshPolicy> refreshPolicy = Property.ofValue(RefreshPolicy.NONE);
 
     @Schema(
-        title = "The content type of `value`."
+        title = "Value content type",
+        description = "Content type hint for `value`; default JSON."
     )
     @Builder.Default
     private Property<XContentType> contentType = Property.ofValue(XContentType.JSON);
@@ -179,17 +183,17 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The id of the document changed."
+            title = "Document id"
         )
         private String id;
 
         @Schema(
-            title = "The change that occurred to the document."
+            title = "Indexing result"
         )
         private Result result;
 
         @Schema(
-            title = "The version of the updated document."
+            title = "Document version"
         )
         private Long version;
     }

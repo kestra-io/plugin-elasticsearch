@@ -17,14 +17,15 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 public abstract class AbstractTask extends Task {
     @Schema(
-        title = "The connection properties."
+        title = "Elasticsearch connection",
+        description = "Connection settings shared by tasks; hosts are required."
     )
     @NotNull
     protected ElasticsearchConnection connection;
 
     @Schema(
-        title = "Controls the shard routing of the request.",
-        description = "Using this value to hash the shard and not the id."
+        title = "Custom shard routing",
+        description = "Optional routing key hashed to pick the shard instead of using the document id."
     )
     protected Property<String> routing;
 }

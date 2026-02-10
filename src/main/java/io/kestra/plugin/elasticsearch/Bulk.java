@@ -34,8 +34,8 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Bulk load documents in ElasticSearch using bulk elastic files.",
-    description = "Read more about Elastic bulk files in their [official documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html)."
+    title = "Replay Elasticsearch bulk file",
+    description = "Reads an Elasticsearch bulk file (NDJSON or Ion) from Kestra storage and replays operations. Follows the bulk file contract; see Elasticsearch bulk API docs for format."
 )
 @Plugin(
     metrics = {

@@ -37,8 +37,8 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Send a search request to an Elasticsearch cluster.",
-    description = "Get all documents from a search request and store it as outputs."
+    title = "Execute Elasticsearch search request",
+    description = "Runs the configured search against the Elasticsearch cluster and returns the response hits. Supports returning the first hit, all hits, or storing hits to Kestra internal storage; default `fetchType=FETCH`. Uses only the current response page—configure pagination on the request when you need more."
 )
 @Plugin(
     metrics = {
@@ -72,11 +72,8 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 )
 public class Search extends AbstractSearch implements RunnableTask<Search.Output> {
     @Schema(
-        title = "The way you want to store the data.",
-        description = "FETCH_ONE output the first row, "
-            + "FETCH output all the rows, "
-            + "STORE store all rows in a file, "
-            + "NONE do nothing."
+        title = "Result handling mode",
+        description = "Controls how hits are exposed in outputs; default `FETCH` returns all hits in the response. `FETCH_ONE` returns only the first hit, `STORE` writes hits to Kestra storage and returns a URI, and `NONE` leaves outputs empty."
     )
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
@@ -167,30 +164,32 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The size of the rows fetched."
+            title = "Returned hit count",
+            description = "Number of hits included in outputs for the selected fetch type."
         )
         private Integer size;
 
         @Schema(
-            title = "The total of the rows fetched without pagination."
+            title = "Total hits reported",
+            description = "Total hits reported by Elasticsearch, regardless of pagination."
         )
         private Long total;
 
         @Schema(
-            title = "List containing the fetched data.",
-            description = "Only populated if using `fetchType=FETCH`."
+            title = "Fetched hits",
+            description = "Available only when `fetchType=FETCH`; contains hit sources for the current response page."
         )
         private List<Map<String, Object>> rows;
 
         @Schema(
-            title = "Map containing the first row of fetched data.",
-            description = "Only populated if using `fetchType=FETCH_ONE`."
+            title = "First hit",
+            description = "Available only when `fetchType=FETCH_ONE`; contains the first hit source."
         )
         private Map<String, Object> row;
 
         @Schema(
-            title = "The URI of the stored data.",
-            description = "Only populated if using `fetchType=STORE`."
+            title = "Stored hits URI",
+            description = "Available only when `fetchType=STORE`; Kestra internal storage path to the Ion file."
         )
         private URI uri;
     }
