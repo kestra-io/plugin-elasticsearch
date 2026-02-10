@@ -41,8 +41,8 @@ public class ElasticsearchConnection {
     private static final ObjectMapper MAPPER = JacksonMapper.ofJson(false);
 
     @Schema(
-        title = "List of HTTP ElasticSearch servers.",
-        description = "Must be an URI like `https://elasticsearch.com:9200` with scheme and port."
+        title = "Elasticsearch hosts",
+        description = "List of HTTP(S) endpoints including scheme and port, e.g. `https://elasticsearch.com:9200`; at least one is required."
     )
     @PluginProperty(dynamic = true)
     @NotNull
@@ -50,35 +50,33 @@ public class ElasticsearchConnection {
     private List<String> hosts;
 
     @Schema(
-        title = "Basic auth configuration."
+        title = "Basic authentication",
+        description = "Optional HTTP basic auth credentials rendered at runtime."
     )
     @PluginProperty
     private BasicAuth basicAuth;
 
     @Schema(
-        title = "List of HTTP headers to be send on every request.",
-        description = "Must be a string with key value separated with `:`, ex: `Authorization: Token XYZ`."
+        title = "Custom HTTP headers",
+        description = "Headers sent on every request in `Name: Value` format, e.g. `Authorization: Token XYZ`."
     )
     private Property<List<String>> headers;
 
     @Schema(
-        title = "Sets the path's prefix for every request used by the HTTP client.",
-        description = "For example, if this is set to `/my/path`, then any client request will become `/my/path/` + endpoint.\n" +
-            "In essence, every request's endpoint is prefixed by this `pathPrefix`.\n" +
-            "The path prefix is useful for when ElasticSearch is behind a proxy that provides a base path " +
-            "or a proxy that requires all paths to start with '/'; it is not intended for other purposes and " +
-            "it should not be supplied in other scenarios."
+        title = "Request path prefix",
+        description = "Base path prepended to every Elasticsearch endpoint, e.g. `/my/path`. Use only when the cluster is served behind a proxy that requires a prefix; leave empty otherwise."
     )
     private Property<String> pathPrefix;
 
     @Schema(
-        title = "Whether the REST client should return any response containing at least one warning header as a failure."
+        title = "Fail on warning headers",
+        description = "When true, any response containing Elasticsearch warning headers is treated as an error."
     )
     private Property<Boolean> strictDeprecationMode;
 
     @Schema(
-        title = "Trust all SSL CA certificates.",
-        description = "Use this if the server is using a self signed SSL certificate."
+        title = "Trust all SSL certificates",
+        description = "Skips certificate validation for HTTPS connections; use only with self-signed certificates in non-production."
     )
     private Property<Boolean> trustAllSsl;
 
@@ -87,12 +85,14 @@ public class ElasticsearchConnection {
     @Getter
     public static class BasicAuth {
         @Schema(
-            title = "Basic auth username."
+            title = "Basic auth username",
+            description = "Username for HTTP basic authentication."
         )
         private Property<String> username;
 
         @Schema(
-            title = "Basic auth password."
+            title = "Basic auth password",
+            description = "Password for HTTP basic authentication."
         )
         private Property<String> password;
     }

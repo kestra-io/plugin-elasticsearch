@@ -32,7 +32,8 @@ import java.util.concurrent.atomic.AtomicLong;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Get all documents from a search request and store it as a Kestra Internal Storage file."
+    title = "Scroll and store search results",
+    description = "Executes a search with a 60s scroll context and streams all hits to a Kestra internal storage file. Uses the provided request body and optional indices/routing from AbstractSearch."
 )
 @Plugin(
     metrics = {
@@ -152,12 +153,14 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The size of the rows fetch"
+            title = "Fetched hit count",
+            description = "Total number of hits written to storage."
         )
         private Long size;
 
         @Schema(
-            title = "The uri of store result"
+            title = "Stored hits URI",
+            description = "Kestra internal storage path to the Ion file containing all hits."
         )
         private URI uri;
     }

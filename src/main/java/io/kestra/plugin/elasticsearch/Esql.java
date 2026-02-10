@@ -42,7 +42,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Query Elasticsearch using ES|QL."
+    title = "Run ES|QL query",
+    description = "Executes an ES|QL query and returns hits in different formats. Defaults to `fetchType=FETCH`; STORE writes results to Kestra internal storage. Only the current result set is processed—no pagination."
 )
 @Plugin(
     metrics = {
@@ -96,26 +97,23 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     private static final TypeReference<Map<String, Object>> TYPE_REFERENCE = new TypeReference<>() {};
 
     @Schema(
-        title = "The way you want to store the data.",
-        description = "FETCH_ONE output the first row, "
-            + "FETCH output all the rows, "
-            + "STORE store all rows in a file, "
-            + "NONE do nothing."
+        title = "Result handling mode",
+        description = "Controls how query results are exposed; default `FETCH` returns all rows. `FETCH_ONE` returns the first row, `STORE` writes rows to Kestra storage and returns a URI, `NONE` leaves outputs empty."
     )
     @Builder.Default
     @NotNull
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
     @Schema(
-        title = "The ElasticSearch value.",
-        description = "Can be a JSON string. In this case, the contentType will be used or a raw Map."
+        title = "ES|QL query string",
+        description = "ES|QL statement rendered at runtime; required."
     )
     @NotNull
     private Property<String> query;
 
     @Schema(
-        title = "Query filter.",
-        description = "Specify a DSL query in the filter parameter to filter the set of documents that an ES|QL query runs on."
+        title = "Query filter",
+        description = "Optional DSL filter applied before the ES|QL query runs."
     )
     @PluginProperty(dynamic = true)
     private Object filter;
@@ -222,30 +220,32 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The number of fetched rows."
+            title = "Returned row count",
+            description = "Number of rows included in outputs for the selected fetch type."
         )
         private Integer size;
 
         @Schema(
-            title = "The total number of rows fetched without pagination."
+            title = "Total rows reported",
+            description = "Total rows returned by the ES|QL response."
         )
         private Long total;
 
         @Schema(
-            title = "List containing the fetched data.",
-            description = "Only populated if using `fetchType=FETCH`."
+            title = "Fetched rows",
+            description = "Populated when `fetchType=FETCH`; contains all rows from the response."
         )
         private List<Map<String, Object>> rows;
 
         @Schema(
-            title = "Map containing the first row of fetched data.",
-            description = "Only populated if using `fetchType=FETCH_ONE`."
+            title = "First row",
+            description = "Populated when `fetchType=FETCH_ONE`; contains the first row only."
         )
         private Map<String, Object> row;
 
         @Schema(
-            title = "The URI of the data stored in Kestra's internal storage.",
-            description = "Only populated if using `fetchType=STORE`."
+            title = "Stored rows URI",
+            description = "Populated when `fetchType=STORE`; Kestra internal storage path to the Ion file."
         )
         private URI uri;
     }

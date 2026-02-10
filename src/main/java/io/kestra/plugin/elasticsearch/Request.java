@@ -30,7 +30,8 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Send a request to an ElasticSearch cluster."
+    title = "Call Elasticsearch endpoint",
+    description = "Performs an arbitrary HTTP request through the configured connection. Supports query parameters and optional JSON body; useful for endpoints not covered by dedicated tasks."
 )
 @Plugin(
     examples = {
@@ -93,25 +94,28 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 )
 public class Request extends AbstractTask implements RunnableTask<Request.Output> {
     @Schema(
-        title = "The http method to use."
+        title = "HTTP method",
+        description = "Defaults to GET."
     )
     @Builder.Default
     protected Property<HttpMethod> method = Property.ofValue(HttpMethod.GET);
 
     @Schema(
-        title = "The path of the request (without scheme, host, port, or prefix)."
+        title = "Endpoint path",
+        description = "Relative path without scheme/host/port/prefix, e.g. `my_index/_search`."
     )
     @NotNull
     protected Property<String> endpoint;
 
     @Schema(
-        title = "Query string parameters."
+        title = "Query parameters",
+        description = "Optional key/value query string pairs."
     )
     protected Property<Map<String, String>> parameters;
 
     @Schema(
-        title = "The full body.",
-        description = "Can be a JSON string or raw Map that will be converted to json."
+        title = "Request body",
+        description = "Map or JSON string rendered at runtime and sent as JSON."
     )
     @PluginProperty(dynamic = true)
     protected Object body;
@@ -167,7 +171,13 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
     @Builder
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
+        @Schema(
+            title = "HTTP status code"
+        )
         private Integer status;
+        @Schema(
+            title = "Response body"
+        )
         private Object response;
     }
 }

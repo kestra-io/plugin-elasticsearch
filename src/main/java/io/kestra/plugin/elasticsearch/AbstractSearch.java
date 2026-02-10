@@ -22,22 +22,22 @@ import java.util.List;
 public abstract class AbstractSearch extends AbstractTask {
 
     @Schema(
-        title = "The ElasticSearch indices.",
-        description = "Default to all indices."
+        title = "Target indices",
+        description = "List of Elasticsearch indices to query; empty means all indices."
     )
     private Property<List<String>> indexes;
 
     @Schema(
-        title = "The ElasticSearch value.",
-        description = "Can be a JSON string. In this case, the contentType will be used or a raw Map."
+        title = "Search request body",
+        description = "Elasticsearch search body as Map or JSON string; rendered before execution."
     )
     @PluginProperty(dynamic = true)
     @NotNull
     private Object request;
 
     @Schema(
-        title = "The content type of `value`.",
-        description = "Not used anymore."
+        title = "Request content type",
+        description = "Deprecated; no longer used."
     )
     @PluginProperty
     @Builder.Default

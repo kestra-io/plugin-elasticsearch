@@ -32,7 +32,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Bulk load documents in ElasticSearch using a Kestra Internal Storage file."
+    title = "Bulk load from Kestra storage",
+    description = "Reads newline-delimited documents from a Kestra internal storage file and indexes them in bulk. Uses the parent chunk size; set `removeIdKey` to keep or drop the id field after use."
 )
 @Plugin(
     metrics = {
@@ -72,17 +73,20 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
     private Property<String> index;
 
     @Schema(
-        title = "Sets the type of operation to perform."
+        title = "Operation type",
+        description = "Intended bulk op type; currently only index is applied."
     )
     private Property<OpType> opType;
 
     @Schema(
-        title = "Use this key as id."
+        title = "Field used as document id",
+        description = "Name of the field to use as `_id`; required when assigning ids from input rows."
     )
     private Property<String> idKey;
 
     @Schema(
-        title = "Remove idKey from the final document."
+        title = "Remove id field from document",
+        description = "When true (default), drops the idKey field from the indexed document body."
     )
     @Builder.Default
     private Property<Boolean> removeIdKey = Property.ofValue(true);

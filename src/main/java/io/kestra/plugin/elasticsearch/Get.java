@@ -23,7 +23,8 @@ import jakarta.validation.constraints.NotNull;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Get an ElasticSearch document."
+    title = "Retrieve Elasticsearch document",
+    description = "Fetches a single document by index and id. Optionally enforces a version match and can fail when the document is missing."
 )
 @Plugin(
     examples = {
@@ -53,19 +54,20 @@ public class Get extends AbstractTask implements RunnableTask<Get.Output> {
     private Property<String> index;
 
     @Schema(
-        title = "The ElasticSearch id."
+        title = "Document id"
     )
     @NotNull
     private Property<String> key;
 
     @Schema(
-        title = "Current version of the document",
-        description = " The specified version must match the current version of the document for the GET request to succeed."
+        title = "Expected version",
+        description = "GET succeeds only if the document version matches this value."
     )
     private Property<Long> docVersion;
 
     @Schema(
-        title = "Raise an error if the document is not found."
+        title = "Fail when missing",
+        description = "If true, throws when the document is not found; default false."
     )
     @Builder.Default
     private Property<Boolean> errorOnMissing = Property.ofValue(false);
@@ -105,6 +107,9 @@ public class Get extends AbstractTask implements RunnableTask<Get.Output> {
     @Builder
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
+        @Schema(
+            title = "Retrieved document"
+        )
         private Map<String, Object> row;
     }
 }
