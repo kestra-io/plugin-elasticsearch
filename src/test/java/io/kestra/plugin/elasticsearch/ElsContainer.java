@@ -28,7 +28,7 @@ public class ElsContainer {
     protected static ElasticsearchClient elasticsearchClient;
 
     static {
-        elasticsearchContainer = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch:8.17.2"))
+        elasticsearchContainer = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch:9.3.0"))
             .withEnv("discovery.type", "single-node")
             .withEnv("xpack.security.enabled", "false")
             .withExposedPorts(9200)
@@ -70,7 +70,7 @@ public class ElsContainer {
         HttpClient client = HttpClient.newHttpClient();
         String bulkContent = Files.readString(Path.of(url.toURI()));
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("http://" + elasticsearchContainer.getHttpHostAddress()  + "/_bulk"))
+            .uri(URI.create("http://" + elasticsearchContainer.getHttpHostAddress() + "/_bulk"))
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(bulkContent))
             .build();
@@ -80,10 +80,9 @@ public class ElsContainer {
         }
 
         client.send(HttpRequest.newBuilder()
-            .uri(URI.create("http://" + elasticsearchContainer.getHttpHostAddress()  + "/gbit/_refresh"))
+            .uri(URI.create("http://" + elasticsearchContainer.getHttpHostAddress() + "/gbit/_refresh"))
             .POST(HttpRequest.BodyPublishers.noBody())
             .header("Content-Type", "application/json")
             .build(), BodyHandlers.ofString());
     }
-
 }
