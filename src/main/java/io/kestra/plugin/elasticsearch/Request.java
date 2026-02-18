@@ -1,6 +1,5 @@
 package io.kestra.plugin.elasticsearch;
 
-import co.elastic.clients.transport.rest5_client.low_level.Response;
 import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import com.google.common.base.Charsets;
 import io.kestra.core.models.annotations.Example;
@@ -18,7 +17,6 @@ import lombok.experimental.SuperBuilder;
 import org.apache.commons.io.IOUtils;
 import org.apache.hc.client5.http.entity.EntityBuilder;
 import org.apache.hc.core5.http.ContentType;
-import org.slf4j.Logger;
 
 import java.util.Map;
 
@@ -122,9 +120,9 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
 
     @Override
     public Request.Output run(RunContext runContext) throws Exception {
-        Logger logger = runContext.logger();
+        var logger = runContext.logger();
         try (Rest5Client client = this.connection.client(runContext)) {
-            co.elastic.clients.transport.rest5_client.low_level.Request request = new co.elastic.clients.transport.rest5_client.low_level.Request(
+            var request = new co.elastic.clients.transport.rest5_client.low_level.Request(
                 runContext.render(method).as(HttpMethod.class).orElseThrow().name(),
                 runContext.render(endpoint).as(String.class).orElseThrow()
             );
@@ -148,17 +146,17 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
 
             logger.debug("Starting request: {}", request);
 
-            Response response = client.performRequest(request);
+            var response = client.performRequest(request);
 
             response.getWarnings().forEach(logger::warn);
 
-            String contentType = response.getHeader("content-type");
-            String content = IOUtils.toString(response.getEntity().getContent(), Charsets.UTF_8);
+            var contentType = response.getHeader("content-type");
+            var content = IOUtils.toString(response.getEntity().getContent(), Charsets.UTF_8);
 
-            Output.OutputBuilder builder = Output.builder()
+            var builder = Output.builder()
                 .status(response.getStatusCode());
 
-            if (contentType.contains("application/json")) {
+            if (contentType != null && contentType.contains("application/json")) {
                 builder.response = JacksonMapper.toMap(content);
             } else {
                 builder.response = content;

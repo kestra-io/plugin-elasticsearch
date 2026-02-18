@@ -28,7 +28,7 @@ public class ElsContainer {
     protected static ElasticsearchClient elasticsearchClient;
 
     static {
-        elasticsearchContainer = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch:9.1.3"))
+        elasticsearchContainer = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch:8.17.2"))
             .withEnv("discovery.type", "single-node")
             .withEnv("xpack.security.enabled", "false")
             .withExposedPorts(9200)
