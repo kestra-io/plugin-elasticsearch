@@ -3,8 +3,9 @@ package io.kestra.plugin.elasticsearch;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import co.elastic.clients.transport.rest5_client.Rest5ClientOptions;
+import co.elastic.clients.transport.rest5_client.low_level.RequestOptions;
 import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
-import co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
@@ -12,6 +13,7 @@ import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -30,12 +32,16 @@ import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
-import javax.net.ssl.SSLContext;
 
 @SuperBuilder
 @NoArgsConstructor
 @Getter
 public class ElasticsearchConnection {
+    private static final int DEFAULT_TARGET_SERVER_VERSION = 8;
+    private static final int MAX_SUPPORTED_TARGET_SERVER_VERSION = 9;
+    private static final String ACCEPT_HEADER = "Accept";
+    private static final String CONTENT_TYPE_HEADER = "Content-Type";
+    private static final String COMPATIBLE_MEDIA_TYPE = "application/vnd.elasticsearch+json; compatible-with=%d";
 
     @Schema(
         title = "Elasticsearch hosts",
@@ -77,6 +83,13 @@ public class ElasticsearchConnection {
     )
     private Property<Boolean> trustAllSsl;
 
+    @Schema(
+        title = "Target Elasticsearch server major version",
+        description = "Major version used for compatibility headers (`Accept` and `Content-Type`). Set to `8` for Elasticsearch 8 clusters or `9` for Elasticsearch 9 clusters."
+    )
+    @Builder.Default
+    private Property<Integer> targetServerVersion = Property.ofValue(DEFAULT_TARGET_SERVER_VERSION);
+
     @SuperBuilder
     @NoArgsConstructor
     @Getter
@@ -95,10 +108,10 @@ public class ElasticsearchConnection {
     }
 
     Rest5Client client(RunContext runContext) throws IllegalVariableEvaluationException {
-        PoolingAsyncClientConnectionManagerBuilder connectionManagerBuilder = PoolingAsyncClientConnectionManagerBuilder.create();
+        var connectionManagerBuilder = PoolingAsyncClientConnectionManagerBuilder.create();
         if (runContext.render(this.trustAllSsl).as(Boolean.class).orElse(false)) {
             try {
-                SSLContext sslContext = SSLContexts.custom()
+                var sslContext = SSLContexts.custom()
                     .loadTrustMaterial(null, TrustAllStrategy.INSTANCE)
                     .build();
 
@@ -108,15 +121,14 @@ public class ElasticsearchConnection {
             }
         }
 
-        HttpAsyncClientBuilder httpClientBuilder = HttpAsyncClientBuilder.create()
+        var httpClientBuilder = HttpAsyncClientBuilder.create()
             .setConnectionManager(connectionManagerBuilder.build());
 
         httpClientBuilder.setUserAgent("Kestra/" + runContext.version());
 
-        Rest5ClientBuilder builder = Rest5Client
+        var builder = Rest5Client
             .builder(this.httpHosts(runContext))
             .setHttpClientConfigCallback(client -> httpClientBuilder.build());
-
 
         if (this.getHeaders() != null) {
             builder.setDefaultHeaders(this.defaultHeaders(runContext));
@@ -135,8 +147,13 @@ public class ElasticsearchConnection {
     }
 
     public ElasticsearchClient highLevelClient(RunContext runContext) throws IllegalVariableEvaluationException {
-        Rest5Client lowLevelClient = client(runContext);
-        Rest5ClientTransport transport = new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
+        var lowLevelClient = client(runContext);
+        var compatibleMediaType = this.compatibleMediaType(runContext);
+        var transportOptionsBuilder = new Rest5ClientOptions.Builder(RequestOptions.DEFAULT.toBuilder());
+        transportOptionsBuilder.setHeader(ACCEPT_HEADER, compatibleMediaType);
+        transportOptionsBuilder.setHeader(CONTENT_TYPE_HEADER, compatibleMediaType);
+        var transportOptions = transportOptionsBuilder.build();
+        var transport = new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper(), transportOptions);
 
         return new ElasticsearchClient(transport);
     }
@@ -145,7 +162,7 @@ public class ElasticsearchConnection {
         return runContext.render(this.hosts)
             .stream()
             .map(s -> {
-                URI uri = URI.create(s);
+                var uri = URI.create(s);
                 return new HttpHost(uri.getScheme(), uri.getHost(), uri.getPort());
             })
             .toArray(HttpHost[]::new);
@@ -155,9 +172,21 @@ public class ElasticsearchConnection {
         return runContext.render(this.headers).asList(String.class)
             .stream()
             .map(header -> {
-                String[] nameAndValue = header.split(":");
-                return new BasicHeader(nameAndValue[0], nameAndValue[1]);
+                var nameAndValue = header.split(":", 2);
+                if (nameAndValue.length != 2) {
+                    throw new IllegalArgumentException("Invalid header format, expected `Name: Value` but got `" + header + "`");
+                }
+                return new BasicHeader(nameAndValue[0].trim(), nameAndValue[1].trim());
             })
             .toArray(Header[]::new);
+    }
+
+    String compatibleMediaType(RunContext runContext) throws IllegalVariableEvaluationException {
+        var rTargetServerVersion = runContext.render(this.targetServerVersion).as(Integer.class).orElse(DEFAULT_TARGET_SERVER_VERSION);
+        if (rTargetServerVersion < DEFAULT_TARGET_SERVER_VERSION || rTargetServerVersion > MAX_SUPPORTED_TARGET_SERVER_VERSION) {
+            throw new IllegalArgumentException("`targetServerVersion` must be 8 or 9");
+        }
+
+        return COMPATIBLE_MEDIA_TYPE.formatted(rTargetServerVersion);
     }
 }
