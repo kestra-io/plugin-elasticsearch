@@ -13,6 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,8 @@ class BasicAuthRegressionTest {
 
     private static HttpServer server;
     private static String host;
+    private static final AtomicBoolean CHALLENGE_ONLY_MODE = new AtomicBoolean(false);
+    private static final AtomicInteger REQUEST_COUNTER = new AtomicInteger(0);
 
     @Inject
     private RunContextFactory runContextFactory;
@@ -35,16 +39,18 @@ class BasicAuthRegressionTest {
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/", exchange -> {
             var authorization = exchange.getRequestHeaders().getFirst("Authorization");
+            var expectedAuthorization = EXPECTED_AUTHORIZATION.equals(authorization);
 
-            if (!EXPECTED_AUTHORIZATION.equals(authorization)) {
-                var body = "unauthorized";
-                var payload = body.getBytes(StandardCharsets.UTF_8);
-                exchange.getResponseHeaders().set("content-type", "text/plain");
-                exchange.getResponseHeaders().set("WWW-Authenticate", "Basic realm=\"test\"");
-                exchange.sendResponseHeaders(401, payload.length);
-                try (var output = exchange.getResponseBody()) {
-                    output.write(payload);
+            if (CHALLENGE_ONLY_MODE.get()) {
+                var requestNumber = REQUEST_COUNTER.incrementAndGet();
+                if (requestNumber == 1 && expectedAuthorization) {
+                    writeUnauthorized(exchange, "preemptive authorization rejected");
+                    return;
                 }
+            }
+
+            if (!expectedAuthorization) {
+                writeUnauthorized(exchange, "unauthorized");
                 return;
             }
 
@@ -90,5 +96,43 @@ class BasicAuthRegressionTest {
         var output = task.run(runContext);
 
         assertThat(output.getId(), is("doc-1"));
+    }
+
+    @Test
+    void shouldHandleBasicAuthChallengeFlowForPut() throws Exception {
+        var runContext = runContextFactory.of();
+        CHALLENGE_ONLY_MODE.set(true);
+        REQUEST_COUNTER.set(0);
+        var task = Put.builder()
+            .connection(
+                ElasticsearchConnection.builder()
+                    .hosts(List.of(host))
+                    .basicAuth(ElasticsearchConnection.BasicAuth.builder()
+                        .username(Property.ofValue(USERNAME))
+                        .password(Property.ofValue(PASSWORD))
+                        .build())
+                    .build()
+            )
+            .index(Property.ofValue("auth_regression"))
+            .key(Property.ofValue("doc-1"))
+            .value(Map.of("name", "john"))
+            .build();
+
+        try {
+            var output = task.run(runContext);
+            assertThat(output.getId(), is("doc-1"));
+        } finally {
+            CHALLENGE_ONLY_MODE.set(false);
+        }
+    }
+
+    private static void writeUnauthorized(com.sun.net.httpserver.HttpExchange exchange, String body) throws java.io.IOException {
+        var payload = body.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("content-type", "text/plain");
+        exchange.getResponseHeaders().set("WWW-Authenticate", "Basic realm=\"test\"");
+        exchange.sendResponseHeaders(401, payload.length);
+        try (var output = exchange.getResponseBody()) {
+            output.write(payload);
+        }
     }
 }
