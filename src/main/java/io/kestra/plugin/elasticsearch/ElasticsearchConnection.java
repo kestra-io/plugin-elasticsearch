@@ -28,9 +28,12 @@ import org.apache.hc.core5.http.message.BasicHeader;
 import org.apache.hc.core5.ssl.SSLContexts;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 @SuperBuilder
@@ -130,8 +133,9 @@ public class ElasticsearchConnection {
             .builder(this.httpHosts(runContext))
             .setHttpClientConfigCallback(client -> httpClientBuilder.build());
 
-        if (this.getHeaders() != null) {
-            builder.setDefaultHeaders(this.defaultHeaders(runContext));
+        var rConnectionHeaders = this.connectionHeaders(runContext);
+        if (rConnectionHeaders != null) {
+            builder.setDefaultHeaders(rConnectionHeaders);
         }
 
         if (runContext.render(this.pathPrefix).as(String.class).isPresent()) {
@@ -179,6 +183,30 @@ public class ElasticsearchConnection {
                 return new BasicHeader(nameAndValue[0].trim(), nameAndValue[1].trim());
             })
             .toArray(Header[]::new);
+    }
+
+    private Header[] connectionHeaders(RunContext runContext) throws IllegalVariableEvaluationException {
+        var connectionHeaders = new ArrayList<Header>();
+        if (this.headers != null) {
+            connectionHeaders.addAll(List.of(this.defaultHeaders(runContext)));
+        }
+        if (this.basicAuth != null && connectionHeaders.stream().noneMatch(header -> header.getName().equalsIgnoreCase("Authorization"))) {
+            connectionHeaders.add(this.authorizationHeader(runContext));
+        }
+
+        if (connectionHeaders.isEmpty()) {
+            return null;
+        }
+
+        return connectionHeaders.toArray(Header[]::new);
+    }
+
+    private Header authorizationHeader(RunContext runContext) throws IllegalVariableEvaluationException {
+        var username = runContext.render(this.basicAuth.username).as(String.class).orElseThrow();
+        var password = runContext.render(this.basicAuth.password).as(String.class).orElseThrow();
+        var credentials = username + ":" + password;
+        var encodedCredentials = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+        return new BasicHeader("Authorization", "Basic " + encodedCredentials);
     }
 
     String compatibleMediaType(RunContext runContext) throws IllegalVariableEvaluationException {
