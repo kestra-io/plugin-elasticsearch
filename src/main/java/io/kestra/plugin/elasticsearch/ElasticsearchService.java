@@ -1,11 +1,11 @@
 package io.kestra.plugin.elasticsearch;
 
+import java.io.IOException;
+import java.util.Map;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
-
-import java.io.IOException;
-import java.util.Map;
 
 public abstract class ElasticsearchService {
     @SuppressWarnings("unchecked")

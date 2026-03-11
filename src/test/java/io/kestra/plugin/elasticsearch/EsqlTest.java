@@ -1,8 +1,12 @@
 package io.kestra.plugin.elasticsearch;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
 
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
@@ -10,15 +14,14 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.tenant.TenantService;
-import jakarta.inject.Inject;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import org.junit.jupiter.api.Test;
 
-class EsqlTest extends ElsContainer{
+import jakarta.inject.Inject;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+
+class EsqlTest extends ElsContainer {
 
     @Inject
     private StorageInterface storageInterface;

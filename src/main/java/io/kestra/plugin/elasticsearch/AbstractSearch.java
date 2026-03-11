@@ -1,18 +1,19 @@
 package io.kestra.plugin.elasticsearch;
 
-import co.elastic.clients.elasticsearch.core.SearchRequest;
+import java.io.IOException;
+import java.util.List;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.elasticsearch.model.XContentType;
+
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.io.IOException;
-import java.util.List;
 
 @SuperBuilder
 @ToString

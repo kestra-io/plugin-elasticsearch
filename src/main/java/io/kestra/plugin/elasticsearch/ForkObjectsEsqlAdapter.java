@@ -1,5 +1,10 @@
 package io.kestra.plugin.elasticsearch;
 
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
+
 import co.elastic.clients.ApiClient;
 import co.elastic.clients.elasticsearch._helpers.esql.EsqlAdapter;
 import co.elastic.clients.elasticsearch._helpers.esql.EsqlAdapterBase;
@@ -11,13 +16,9 @@ import co.elastic.clients.transport.endpoints.BinaryResponse;
 import jakarta.annotation.Nullable;
 import jakarta.json.stream.JsonParser;
 
-import java.io.IOException;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Fork of {@link ObjectsEsqlAdapter} due to unreleased change
+ * 
  * @see <a href="https://github.com/elastic/elasticsearch-java/blob/main/java-client/src/main/java/co/elastic/clients/elasticsearch/_helpers/esql/EsqlAdapterBase.java">Unreleased change</a>
  */
 public class ForkObjectsEsqlAdapter<T> implements EsqlAdapter<Iterable<T>> {

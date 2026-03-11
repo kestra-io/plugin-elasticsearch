@@ -1,9 +1,14 @@
 package io.kestra.plugin.elasticsearch;
 
-import co.elastic.clients.elasticsearch.core.bulk.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.util.Map;
+import java.util.function.Consumer;
+
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -12,6 +17,8 @@ import io.kestra.core.models.executions.metrics.Timer;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
+
+import co.elastic.clients.elasticsearch.core.bulk.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -20,11 +27,6 @@ import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.util.Map;
-import java.util.function.Consumer;
 
 import static io.kestra.core.utils.Rethrow.throwConsumer;
 
@@ -76,7 +78,8 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
 
     @SuppressWarnings("unchecked")
     public Consumer<FluxSink<BulkOperation>> fileReader(BufferedReader input) throws IOException {
-        return throwConsumer(s -> {
+        return throwConsumer(s ->
+        {
             String row;
             Boolean isJson = null;
 
@@ -123,10 +126,12 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                         var updateOperation = new UpdateOperation.Builder<>()
                             .id((String) value.get("_id"))
                             .index((String) value.get("_index"))
-                            .action(new UpdateAction.Builder<>()
+                            .action(
+                                new UpdateAction.Builder<>()
                                     .docAsUpsert(true)
                                     .doc(parseline(isJson, input.readLine()))
-                                    .build());
+                                    .build()
+                            );
                         bulkOperation.update(updateOperation.build());
                         break;
                     case "delete":
@@ -146,7 +151,7 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
         });
     }
 
-    private static Map<?,?> parseline(Boolean isJson, String line) throws JsonProcessingException {
+    private static Map<?, ?> parseline(Boolean isJson, String line) throws JsonProcessingException {
         if (isJson) {
             return OBJECT_MAPPER.readValue(line, JacksonMapper.MAP_TYPE_REFERENCE);
         } else {

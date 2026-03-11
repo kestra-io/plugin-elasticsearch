@@ -1,13 +1,5 @@
 package io.kestra.plugin.elasticsearch;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-
-import com.sun.net.httpserver.HttpServer;
-import io.kestra.core.junit.annotations.KestraTest;
-import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.RunContextFactory;
-import jakarta.inject.Inject;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -15,9 +7,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import com.sun.net.httpserver.HttpServer;
+
+import io.kestra.core.junit.annotations.KestraTest;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContextFactory;
+
+import jakarta.inject.Inject;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
 @KestraTest
 class BasicAuthRegressionTest {
@@ -37,7 +41,8 @@ class BasicAuthRegressionTest {
     @BeforeAll
     static void beforeAll() throws Exception {
         server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/", exchange -> {
+        server.createContext("/", exchange ->
+        {
             var authorization = exchange.getRequestHeaders().getFirst("Authorization");
             var expectedAuthorization = EXPECTED_AUTHORIZATION.equals(authorization);
 
@@ -82,10 +87,12 @@ class BasicAuthRegressionTest {
             .connection(
                 ElasticsearchConnection.builder()
                     .hosts(List.of(host))
-                    .basicAuth(ElasticsearchConnection.BasicAuth.builder()
-                        .username(Property.ofValue(USERNAME))
-                        .password(Property.ofValue(PASSWORD))
-                        .build())
+                    .basicAuth(
+                        ElasticsearchConnection.BasicAuth.builder()
+                            .username(Property.ofValue(USERNAME))
+                            .password(Property.ofValue(PASSWORD))
+                            .build()
+                    )
                     .build()
             )
             .index(Property.ofValue("auth_regression"))
@@ -107,10 +114,12 @@ class BasicAuthRegressionTest {
             .connection(
                 ElasticsearchConnection.builder()
                     .hosts(List.of(host))
-                    .basicAuth(ElasticsearchConnection.BasicAuth.builder()
-                        .username(Property.ofValue(USERNAME))
-                        .password(Property.ofValue(PASSWORD))
-                        .build())
+                    .basicAuth(
+                        ElasticsearchConnection.BasicAuth.builder()
+                            .username(Property.ofValue(USERNAME))
+                            .password(Property.ofValue(PASSWORD))
+                            .build()
+                    )
                     .build()
             )
             .index(Property.ofValue("auth_regression"))

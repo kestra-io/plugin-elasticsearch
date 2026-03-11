@@ -1,15 +1,17 @@
 package io.kestra.plugin.elasticsearch;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
+import java.util.Locale;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
 
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.elasticsearch.model.HttpMethod;
-import java.util.Locale;
-import java.util.Map;
-import org.junit.jupiter.api.Test;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
 class RequestTest extends ElsContainer {
 
@@ -26,7 +28,6 @@ class RequestTest extends ElsContainer {
             .parameters(Property.ofValue(Map.of("human", "true")))
             .body(Map.of("name", "john"))
             .build();
-
 
         Request.Output runOutput = request.run(runContext);
 

@@ -1,22 +1,11 @@
 package io.kestra.plugin.elasticsearch;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
-import co.elastic.clients.transport.rest5_client.Rest5ClientOptions;
-import co.elastic.clients.transport.rest5_client.low_level.RequestOptions;
-import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
-import io.kestra.core.exceptions.IllegalVariableEvaluationException;
-import io.kestra.core.models.annotations.PluginProperty;
-import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.RunContext;
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
+import java.net.URI;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
+
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
@@ -28,11 +17,24 @@ import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.http.message.BasicHeader;
 import org.apache.hc.core5.ssl.SSLContexts;
 
-import java.net.URI;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.util.List;
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContext;
+
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.rest5_client.Rest5ClientOptions;
+import co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import co.elastic.clients.transport.rest5_client.low_level.RequestOptions;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @SuperBuilder
 @NoArgsConstructor
@@ -113,7 +115,8 @@ public class ElasticsearchConnection {
         var defaultHeaders = this.headers != null ? this.defaultHeaders(runContext) : null;
         var credentialsProvider = this.credentialsProvider(runContext, defaultHeaders);
 
-        builder.setHttpClientConfigCallback(httpClientBuilder -> {
+        builder.setHttpClientConfigCallback(httpClientBuilder ->
+        {
             httpClientBuilder.setUserAgent("Kestra/" + runContext.version());
             if (credentialsProvider != null) {
                 httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
@@ -126,8 +129,8 @@ public class ElasticsearchConnection {
                     .loadTrustMaterial(null, TrustAllStrategy.INSTANCE)
                     .build();
 
-                builder.setConnectionManagerCallback(connectionManagerBuilder ->
-                    connectionManagerBuilder.setTlsStrategy(new DefaultClientTlsStrategy(sslContext, NoopHostnameVerifier.INSTANCE))
+                builder.setConnectionManagerCallback(
+                    connectionManagerBuilder -> connectionManagerBuilder.setTlsStrategy(new DefaultClientTlsStrategy(sslContext, NoopHostnameVerifier.INSTANCE))
                 );
             } catch (KeyManagementException | NoSuchAlgorithmException | KeyStoreException e) {
                 throw new IllegalArgumentException(e);
@@ -145,7 +148,6 @@ public class ElasticsearchConnection {
         if (runContext.render(this.strictDeprecationMode).as(Boolean.class).isPresent()) {
             builder.setStrictDeprecationMode(runContext.render(this.strictDeprecationMode).as(Boolean.class).get());
         }
-
 
         return builder.build();
     }
@@ -196,7 +198,8 @@ public class ElasticsearchConnection {
     private HttpHost[] httpHosts(RunContext runContext) throws IllegalVariableEvaluationException {
         return runContext.render(this.hosts)
             .stream()
-            .map(s -> {
+            .map(s ->
+            {
                 var uri = URI.create(s);
                 return new HttpHost(uri.getScheme(), uri.getHost(), uri.getPort());
             })
@@ -206,7 +209,8 @@ public class ElasticsearchConnection {
     private Header[] defaultHeaders(RunContext runContext) throws IllegalVariableEvaluationException {
         return runContext.render(this.headers).asList(String.class)
             .stream()
-            .map(header -> {
+            .map(header ->
+            {
                 var nameAndValue = header.split(":", 2);
                 if (nameAndValue.length != 2) {
                     throw new IllegalArgumentException("Invalid header format, expected `Name: Value` but got `" + header + "`");

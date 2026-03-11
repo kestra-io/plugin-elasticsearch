@@ -1,17 +1,5 @@
 package io.kestra.plugin.elasticsearch;
 
-import static io.kestra.core.utils.Rethrow.throwConsumer;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-
-import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.FileSerde;
-import io.kestra.core.serializers.JacksonMapper;
-import io.kestra.core.storages.StorageInterface;
-import io.kestra.core.tenant.TenantService;
-import io.kestra.core.utils.IdUtils;
-import jakarta.inject.Inject;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -22,7 +10,22 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
+
 import org.junit.jupiter.api.Test;
+
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.FileSerde;
+import io.kestra.core.serializers.JacksonMapper;
+import io.kestra.core.storages.StorageInterface;
+import io.kestra.core.tenant.TenantService;
+import io.kestra.core.utils.IdUtils;
+
+import jakarta.inject.Inject;
+
+import static io.kestra.core.utils.Rethrow.throwConsumer;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
 class BulkTest extends ElsContainer {
 
@@ -50,11 +53,16 @@ class BulkTest extends ElsContainer {
         File tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
         try (OutputStream output = new FileOutputStream(tempFile)) {
             DATA.apply(indice)
-                .forEach(throwConsumer(s -> output.write((JacksonMapper
-                    .ofJson()
-                    .writeValueAsString(s) + "\n")
-                    .getBytes(StandardCharsets.UTF_8)
-                )));
+                .forEach(
+                    throwConsumer(
+                        s -> output.write(
+                            (JacksonMapper
+                                .ofJson()
+                                .writeValueAsString(s) + "\n")
+                                .getBytes(StandardCharsets.UTF_8)
+                        )
+                    )
+                );
         }
 
         URI uri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));

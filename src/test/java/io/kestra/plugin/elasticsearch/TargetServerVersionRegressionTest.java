@@ -1,22 +1,25 @@
 package io.kestra.plugin.elasticsearch;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+import org.testcontainers.elasticsearch.ElasticsearchContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.elasticsearch.model.RefreshPolicy;
+
 import jakarta.inject.Inject;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import org.junit.jupiter.api.Test;
-import org.testcontainers.elasticsearch.ElasticsearchContainer;
-import org.testcontainers.utility.DockerImageName;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @KestraTest
 class TargetServerVersionRegressionTest {
@@ -30,7 +33,8 @@ class TargetServerVersionRegressionTest {
     }
 
     static {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+        Runtime.getRuntime().addShutdownHook(new Thread(() ->
+        {
             if (ELASTICSEARCH_8_CONTAINER != null) {
                 ELASTICSEARCH_8_CONTAINER.stop();
             }

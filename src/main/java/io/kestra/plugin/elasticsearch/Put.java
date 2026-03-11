@@ -1,11 +1,12 @@
 package io.kestra.plugin.elasticsearch;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.Result;
-import co.elastic.clients.elasticsearch.core.IndexRequest;
-import co.elastic.clients.elasticsearch.core.IndexResponse;
+import java.util.Map;
+
+import org.slf4j.Logger;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -17,13 +18,15 @@ import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.elasticsearch.model.OpType;
 import io.kestra.plugin.elasticsearch.model.RefreshPolicy;
 import io.kestra.plugin.elasticsearch.model.XContentType;
+
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.Result;
+import co.elastic.clients.elasticsearch.core.IndexRequest;
+import co.elastic.clients.elasticsearch.core.IndexResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
-
-import java.util.Map;
 
 @SuperBuilder
 @ToString
@@ -132,7 +135,6 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
 
             var request = new IndexRequest.Builder<Map>();
             request.index(index);
-
 
             this.source(runContext, request);
 

@@ -1,11 +1,21 @@
 package io.kestra.plugin.elasticsearch;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.esql.EsqlFormat;
-import co.elastic.clients.elasticsearch.esql.QueryRequest;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.collect.Iterables;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -16,23 +26,16 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
+
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.esql.EsqlFormat;
+import co.elastic.clients.elasticsearch.esql.QueryRequest;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.apache.commons.lang3.tuple.Pair;
-import org.slf4j.Logger;
 import reactor.core.publisher.Flux;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
@@ -94,7 +97,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
     }
 )
 public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
-    private static final TypeReference<Map<String, Object>> TYPE_REFERENCE = new TypeReference<>() {};
+    private static final TypeReference<Map<String, Object>> TYPE_REFERENCE = new TypeReference<>() {
+    };
 
     @Schema(
         title = "Result handling mode",
@@ -124,18 +128,19 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
 
         try (ElasticsearchClient client = this.connection.highLevelClient(runContext)) {
             // build request
-            QueryRequest queryRequest = QueryRequest.of(throwFunction(builder -> {
-                    builder.query(runContext.render(this.query).as(String.class).orElseThrow());
-                    builder.format(EsqlFormat.Json);
-                    builder.columnar(false);
+            QueryRequest queryRequest = QueryRequest.of(throwFunction(builder ->
+            {
+                builder.query(runContext.render(this.query).as(String.class).orElseThrow());
+                builder.format(EsqlFormat.Json);
+                builder.columnar(false);
 
-                    if (filter != null) {
-                        SearchRequest.Builder request = QueryService.request(runContext, this.filter);
-                        builder.filter(request.build().query());
-                    }
-
-                    return builder;
+                if (filter != null) {
+                    SearchRequest.Builder request = QueryService.request(runContext, this.filter);
+                    builder.filter(request.build().query());
                 }
+
+                return builder;
+            }
             ));
 
             logger.debug("Starting query: {}", query);
@@ -183,7 +188,6 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
                 .build();
         }
     }
-
 
     protected Pair<URI, Long> store(RunContext runContext, Iterable<Map<String, Object>> searchResponse) throws IOException {
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();

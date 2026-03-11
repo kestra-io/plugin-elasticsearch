@@ -1,7 +1,13 @@
 package io.kestra.plugin.elasticsearch;
 
-import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.util.Map;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.hc.client5.http.entity.EntityBuilder;
+import org.apache.hc.core5.http.ContentType;
+
 import com.google.common.base.Charsets;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
@@ -10,15 +16,12 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.elasticsearch.model.HttpMethod;
+
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.apache.commons.io.IOUtils;
-import org.apache.hc.client5.http.entity.EntityBuilder;
-import org.apache.hc.core5.http.ContentType;
-
-import java.util.Map;
 
 import static io.kestra.core.utils.Rethrow.throwConsumer;
 
@@ -130,17 +133,19 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
             if (this.parameters != null) {
                 runContext.render(this.parameters).asMap(String.class, String.class)
                     .entrySet()
-                    .forEach(throwConsumer(e -> {
+                    .forEach(throwConsumer(e ->
+                    {
                         request.addParameter(e.getKey(), e.getValue());
                     }));
             }
 
             if (this.body != null) {
-                request.setEntity(EntityBuilder
-                    .create()
-                    .setContentType(ContentType.APPLICATION_JSON)
-                    .setText(ElasticsearchService.toBody(runContext, this.body))
-                    .build()
+                request.setEntity(
+                    EntityBuilder
+                        .create()
+                        .setContentType(ContentType.APPLICATION_JSON)
+                        .setText(ElasticsearchService.toBody(runContext, this.body))
+                        .build()
                 );
             }
 

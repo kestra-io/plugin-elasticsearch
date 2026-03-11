@@ -1,15 +1,17 @@
 package io.kestra.plugin.elasticsearch;
 
-import co.elastic.clients.elasticsearch.core.SearchRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.kestra.core.exceptions.IllegalVariableEvaluationException;
-import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.JacksonMapper;
-
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.Map;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.JacksonMapper;
+
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 
 public abstract class QueryService {
     private static ObjectMapper MAPPER = JacksonMapper.ofJson();
@@ -26,10 +28,9 @@ public abstract class QueryService {
         }
     }
 
-    private static  SearchRequest.Builder parseQuery(String query) throws IOException {
+    private static SearchRequest.Builder parseQuery(String query) throws IOException {
         try (Reader reader = new StringReader(query)) {
             return new SearchRequest.Builder().withJson(reader);
         }
     }
 }
-

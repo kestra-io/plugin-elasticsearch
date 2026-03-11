@@ -1,12 +1,14 @@
 package io.kestra.plugin.elasticsearch;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
+import java.util.Collections;
+
+import org.junit.jupiter.api.Test;
 
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import java.util.Collections;
-import org.junit.jupiter.api.Test;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
 class ScrollTest extends ElsContainer {
 

@@ -1,17 +1,20 @@
 package io.kestra.plugin.elasticsearch;
 
+import java.util.Locale;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
+import com.google.common.collect.ImmutableMap;
+
+import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContext;
+import io.kestra.core.utils.IdUtils;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import com.google.common.collect.ImmutableMap;
-import io.kestra.core.models.property.Property;
-import io.kestra.core.runners.RunContext;
-import io.kestra.core.utils.IdUtils;
-import java.util.Locale;
-import java.util.Map;
-import org.junit.jupiter.api.Test;
 
 class PutGetTest extends ElsContainer {
 
@@ -41,9 +44,11 @@ class PutGetTest extends ElsContainer {
         put = Put.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .index(Property.ofValue(indice))
-            .value(Map.of(
-                "name", "Jane Doe"
-            ))
+            .value(
+                Map.of(
+                    "name", "Jane Doe"
+                )
+            )
             .build();
 
         putOutput = put.run(runContext);
@@ -58,7 +63,6 @@ class PutGetTest extends ElsContainer {
 
         assertThat(runOutput.getRow().get("name"), is("Jane Doe"));
     }
-
 
     @Test
     void shouldThrowWhenDocumentNotFound() throws Exception {
@@ -80,7 +84,8 @@ class PutGetTest extends ElsContainer {
             .errorOnMissing(Property.ofValue(true))
             .build();
 
-        assertThrows(IllegalStateException.class, () -> {
+        assertThrows(IllegalStateException.class, () ->
+        {
             get.run(runContext);
         });
     }
@@ -110,4 +115,3 @@ class PutGetTest extends ElsContainer {
         assertThat(runOutput.getRow(), is(nullValue()));
     }
 }
-
