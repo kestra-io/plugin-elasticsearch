@@ -106,6 +106,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     )
     @Builder.Default
     @NotNull
+    @PluginProperty(group = "processing")
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
     @Schema(
@@ -113,13 +114,14 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
         description = "ES|QL statement rendered at runtime; required."
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> query;
 
     @Schema(
         title = "Query filter",
         description = "Optional DSL filter applied before the ES|QL query runs."
     )
-    @PluginProperty(dynamic = true)
+    @PluginProperty(dynamic = true, group = "processing")
     private Object filter;
 
     @Override

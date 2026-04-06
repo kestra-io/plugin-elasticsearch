@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -22,11 +23,13 @@ public abstract class AbstractTask extends Task {
         description = "Connection settings shared by tasks; hosts are required."
     )
     @NotNull
+    @PluginProperty(group = "main")
     protected ElasticsearchConnection connection;
 
     @Schema(
         title = "Custom shard routing",
         description = "Optional routing key hashed to pick the shard instead of using the document id."
     )
+    @PluginProperty(group = "advanced")
     protected Property<String> routing;
 }

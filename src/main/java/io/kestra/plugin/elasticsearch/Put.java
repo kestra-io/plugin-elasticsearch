@@ -91,25 +91,28 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
         title = "Target index"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> index;
 
     @Schema(
         title = "Operation type",
         description = "Allowed: INDEX or CREATE."
     )
+    @PluginProperty(group = "advanced")
     private Property<OpType> opType;
 
     @Schema(
         title = "Document id",
         description = "Optional `_id`; if omitted, Elasticsearch auto-generates one."
     )
+    @PluginProperty(group = "connection")
     private Property<String> key;
 
     @Schema(
         title = "Document body",
         description = "Map or JSON string rendered at runtime and sent as the document source."
     )
-    @PluginProperty(dynamic = true)
+    @PluginProperty(dynamic = true, group = "advanced")
     private Object value;
 
     @Schema(
@@ -117,6 +120,7 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
         description = "When to refresh the index after indexing: `IMMEDIATE`, `WAIT_UNTIL`, or `NONE` (default)."
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<RefreshPolicy> refreshPolicy = Property.ofValue(RefreshPolicy.NONE);
 
     @Schema(
@@ -124,6 +128,7 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
         description = "Content type hint for `value`; default JSON."
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<XContentType> contentType = Property.ofValue(XContentType.JSON);
 
     @Override

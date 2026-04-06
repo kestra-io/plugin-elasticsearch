@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -52,18 +53,21 @@ public class Get extends AbstractTask implements RunnableTask<Get.Output> {
         title = "The ElasticSearch index."
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> index;
 
     @Schema(
         title = "Document id"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> key;
 
     @Schema(
         title = "Expected version",
         description = "GET succeeds only if the document version matches this value."
     )
+    @PluginProperty(group = "advanced")
     private Property<Long> docVersion;
 
     @Schema(
@@ -71,6 +75,7 @@ public class Get extends AbstractTask implements RunnableTask<Get.Output> {
         description = "If true, throws when the document is not found; default false."
     )
     @Builder.Default
+    @PluginProperty(group = "reliability")
     private Property<Boolean> errorOnMissing = Property.ofValue(false);
 
     @Override

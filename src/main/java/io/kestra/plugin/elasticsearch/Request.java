@@ -99,6 +99,7 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
         description = "Defaults to GET."
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     protected Property<HttpMethod> method = Property.ofValue(HttpMethod.GET);
 
     @Schema(
@@ -106,19 +107,21 @@ public class Request extends AbstractTask implements RunnableTask<Request.Output
         description = "Relative path without scheme/host/port/prefix, e.g. `my_index/_search`."
     )
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> endpoint;
 
     @Schema(
         title = "Query parameters",
         description = "Optional key/value query string pairs."
     )
+    @PluginProperty(group = "main")
     protected Property<Map<String, String>> parameters;
 
     @Schema(
         title = "Request body",
         description = "Map or JSON string rendered at runtime and sent as JSON."
     )
-    @PluginProperty(dynamic = true)
+    @PluginProperty(dynamic = true, group = "main")
     protected Object body;
 
     @Override
