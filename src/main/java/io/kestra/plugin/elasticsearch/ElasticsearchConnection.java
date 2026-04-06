@@ -50,7 +50,7 @@ public class ElasticsearchConnection {
         title = "Elasticsearch hosts",
         description = "List of HTTP(S) endpoints including scheme and port, e.g. `https://elasticsearch.com:9200`; at least one is required."
     )
-    @PluginProperty(dynamic = true)
+    @PluginProperty(dynamic = true, group = "main")
     @NotNull
     @NotEmpty
     private List<String> hosts;
@@ -59,31 +59,35 @@ public class ElasticsearchConnection {
         title = "Basic authentication",
         description = "Optional HTTP basic auth credentials rendered at runtime."
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     private BasicAuth basicAuth;
 
     @Schema(
         title = "Custom HTTP headers",
         description = "Headers sent on every request in `Name: Value` format, e.g. `Authorization: Token XYZ`."
     )
+    @PluginProperty(group = "advanced")
     private Property<List<String>> headers;
 
     @Schema(
         title = "Request path prefix",
         description = "Base path prepended to every Elasticsearch endpoint, e.g. `/my/path`. Use only when the cluster is served behind a proxy that requires a prefix; leave empty otherwise."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> pathPrefix;
 
     @Schema(
         title = "Fail on warning headers",
         description = "When true, any response containing Elasticsearch warning headers is treated as an error."
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> strictDeprecationMode;
 
     @Schema(
         title = "Trust all SSL certificates",
         description = "Skips certificate validation for HTTPS connections; use only with self-signed certificates in non-production."
     )
+    @PluginProperty(group = "advanced")
     private Property<Boolean> trustAllSsl;
 
     @Schema(
@@ -91,6 +95,7 @@ public class ElasticsearchConnection {
         description = "Major version used for compatibility headers (`Accept` and `Content-Type`). Set to `8` for Elasticsearch 8 clusters or `9` for Elasticsearch 9 clusters."
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Integer> targetServerVersion = Property.ofValue(DEFAULT_TARGET_SERVER_VERSION);
 
     @SuperBuilder
@@ -101,12 +106,14 @@ public class ElasticsearchConnection {
             title = "Basic auth username",
             description = "Username for HTTP basic authentication."
         )
+        @PluginProperty(group = "connection")
         private Property<String> username;
 
         @Schema(
             title = "Basic auth password",
             description = "Password for HTTP basic authentication."
         )
+        @PluginProperty(group = "connection")
         private Property<String> password;
     }
 

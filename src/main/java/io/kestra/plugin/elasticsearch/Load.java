@@ -25,6 +25,7 @@ import lombok.experimental.SuperBuilder;
 import reactor.core.publisher.Flux;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -70,18 +71,21 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
         title = "The elasticsearch index."
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> index;
 
     @Schema(
         title = "Operation type",
         description = "Intended bulk op type; currently only index is applied."
     )
+    @PluginProperty(group = "advanced")
     private Property<OpType> opType;
 
     @Schema(
         title = "Field used as document id",
         description = "Name of the field to use as `_id`; required when assigning ids from input rows."
     )
+    @PluginProperty(group = "connection")
     private Property<String> idKey;
 
     @Schema(
@@ -89,6 +93,7 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
         description = "When true (default), drops the idKey field from the indexed document body."
     )
     @Builder.Default
+    @PluginProperty(group = "connection")
     private Property<Boolean> removeIdKey = Property.ofValue(true);
 
     @SuppressWarnings("unchecked")

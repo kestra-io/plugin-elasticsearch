@@ -26,13 +26,14 @@ public abstract class AbstractSearch extends AbstractTask {
         title = "Target indices",
         description = "List of Elasticsearch indices to query; empty means all indices."
     )
+    @PluginProperty(group = "advanced")
     private Property<List<String>> indexes;
 
     @Schema(
         title = "Search request body",
         description = "Elasticsearch search body as Map or JSON string; rendered before execution."
     )
-    @PluginProperty(dynamic = true)
+    @PluginProperty(dynamic = true, group = "main")
     @NotNull
     private Object request;
 
@@ -40,7 +41,7 @@ public abstract class AbstractSearch extends AbstractTask {
         title = "Request content type",
         description = "Deprecated; no longer used."
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     @Builder.Default
     @Deprecated
     private XContentType contentType = XContentType.JSON;

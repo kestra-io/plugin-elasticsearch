@@ -42,7 +42,7 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
         description = "Kestra internal storage URI containing bulk payload; supports dynamic rendering."
     )
     @NotNull
-    @PluginProperty(dynamic = true, internalStorageURI = true)
+    @PluginProperty(dynamic = true, internalStorageURI = true, group = "main")
     private String from;
 
     @Schema(
@@ -50,6 +50,7 @@ public abstract class AbstractLoad extends AbstractTask implements RunnableTask<
         description = "Number of operations per bulk request; default 1000."
     )
     @Default
+    @PluginProperty(group = "execution")
     private Property<Integer> chunk = Property.ofValue(1000);
 
     abstract protected Flux<BulkOperation> source(RunContext runContext, BufferedReader inputStream) throws IllegalVariableEvaluationException, IOException;
