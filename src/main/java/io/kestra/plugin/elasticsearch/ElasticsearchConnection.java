@@ -106,14 +106,14 @@ public class ElasticsearchConnection {
             title = "Basic auth username",
             description = "Username for HTTP basic authentication."
         )
-        @PluginProperty(group = "connection")
+        @PluginProperty(group = "connection", secret = true)
         private Property<String> username;
 
         @Schema(
             title = "Basic auth password",
             description = "Password for HTTP basic authentication."
         )
-        @PluginProperty(group = "connection")
+        @PluginProperty(group = "connection", secret = true)
         private Property<String> password;
     }
 
