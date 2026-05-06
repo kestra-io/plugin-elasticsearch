@@ -38,7 +38,7 @@ public class RunnerTest extends ElsContainer {
     @Test
     @ExecuteFlow("sanity-checks/esql.yaml")
     void esql(Execution execution) {
-        assertThat(execution.getTaskRunList(), hasSize(4));
+        assertThat(execution.getTaskRunList(), hasSize(6));
         assertThat(execution.getState().getCurrent(), is(State.Type.SUCCESS));
     }
 

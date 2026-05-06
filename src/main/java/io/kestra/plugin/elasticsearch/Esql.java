@@ -1,21 +1,12 @@
 package io.kestra.plugin.elasticsearch;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import org.apache.commons.lang3.tuple.Pair;
-import org.slf4j.Logger;
-
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._helpers.esql.EsqlAdapter;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.esql.EsqlFormat;
+import co.elastic.clients.elasticsearch.esql.QueryRequest;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.collect.Iterables;
-
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -26,16 +17,23 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
-
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.esql.EsqlFormat;
-import co.elastic.clients.elasticsearch.esql.QueryRequest;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
 import reactor.core.publisher.Flux;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
@@ -124,32 +122,48 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     @PluginProperty(dynamic = true, group = "processing")
     private Object filter;
 
+    @Builder.Default
+    @Schema(
+        title = "Columnar result",
+        description = "Optional boolean to choose results in columnar way or not. Default is false"
+    )
+    @PluginProperty(dynamic = true, group = "processing")
+    private Property<Boolean> columnar = Property.ofValue(false);
+
     @Override
     public Esql.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
         try (ElasticsearchClient client = this.connection.highLevelClient(runContext)) {
             // build request
+            Boolean rColumnar = runContext.render(this.columnar).as(Boolean.class).orElseThrow();
             QueryRequest queryRequest = QueryRequest.of(throwFunction(builder ->
-            {
-                builder.query(runContext.render(this.query).as(String.class).orElseThrow());
-                builder.format(EsqlFormat.Json);
-                builder.columnar(false);
+                {
+                    builder.query(runContext.render(this.query).as(String.class).orElseThrow());
+                    builder.format(EsqlFormat.Json);
+                    builder.columnar(rColumnar);
 
-                if (filter != null) {
-                    SearchRequest.Builder request = QueryService.request(runContext, this.filter);
-                    builder.filter(request.build().query());
+                    if (filter != null) {
+                        SearchRequest.Builder request = QueryService.request(runContext, this.filter);
+                        builder.filter(request.build().query());
+                    }
+
+                    return builder;
                 }
-
-                return builder;
-            }
             ));
+
 
             logger.debug("Starting query: {}", query);
 
+            EsqlAdapter<Iterable<Map<String, Object>>> adapter = ForkObjectsEsqlAdapter.of(TYPE_REFERENCE.getType());
+
+            if (rColumnar) {
+                adapter = ColumnarForkObjectsEsqlAdapter.of(TYPE_REFERENCE.getType());
+            }
+
             Iterable<Map<String, Object>> queryResponse = client
                 .esql()
-                .query(ForkObjectsEsqlAdapter.of(TYPE_REFERENCE.getType()), queryRequest);
+                .query(adapter, queryRequest);
 
             Output.OutputBuilder outputBuilder = Esql.Output.builder();
 
