@@ -66,6 +66,25 @@ class EsqlTest extends ElsContainer {
     }
 
     @Test
+    void async() throws Exception {
+        RunContext runContext = runContextFactory.of();
+
+        Esql task = Esql.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .query(Property.ofValue("""
+                FROM gbif
+                | WHERE key == 925277090
+                """))
+            .async(Property.ofValue(true))
+            .build();
+
+        Esql.Output run = task.run(runContext);
+
+        assertThat(run.getSize(), is(1));
+        assertThat(run.getRows().getFirst().get("genericName"), is("Larus"));
+    }
+
+    @Test
     void columnar() throws Exception {
         RunContext runContext = runContextFactory.of();
 

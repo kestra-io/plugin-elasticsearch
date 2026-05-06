@@ -1,8 +1,10 @@
 package io.kestra.plugin.elasticsearch;
 
+import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._helpers.esql.EsqlAdapter;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.esql.ElasticsearchEsqlAsyncClient;
 import co.elastic.clients.elasticsearch.esql.EsqlFormat;
 import co.elastic.clients.elasticsearch.esql.QueryRequest;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -32,6 +34,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -130,6 +133,16 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     @PluginProperty(dynamic = true, group = "processing")
     private Property<Boolean> columnar = Property.ofValue(false);
 
+
+    @Builder.Default
+    @Schema(
+        title = "Async query",
+        description = "Optional boolean to choose to run query using the async endpoint of Elasticsearch. Default is false"
+    )
+    @PluginProperty(dynamic = true, group = "processing")
+    private Property<Boolean> async = Property.ofValue(false);
+
+
     @Override
     public Esql.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
@@ -161,9 +174,18 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
                 adapter = ColumnarForkObjectsEsqlAdapter.of(TYPE_REFERENCE.getType());
             }
 
-            Iterable<Map<String, Object>> queryResponse = client
-                .esql()
-                .query(adapter, queryRequest);
+            Iterable<Map<String, Object>> queryResponse;
+            if (runContext.render(this.async).as(Boolean.class).orElseThrow()) {
+                // Warning : use of internal method `_transport` because it is not possible to create an ElasticsearchEsqlAsyncClient from a ElasticsearchClient
+                ElasticsearchEsqlAsyncClient esqlAsyncClient =
+                    new ElasticsearchAsyncClient(client._transport()).esql();
+                CompletableFuture<Iterable<Map<String, Object>>> queryResponseCompletableFuture = esqlAsyncClient.query(ForkObjectsEsqlAdapter.of(TYPE_REFERENCE.getType()), queryRequest);
+                queryResponse = queryResponseCompletableFuture.get();
+            } else {
+                queryResponse = client
+                    .esql()
+                    .query(adapter, queryRequest);
+            }
 
             Output.OutputBuilder outputBuilder = Esql.Output.builder();
 
