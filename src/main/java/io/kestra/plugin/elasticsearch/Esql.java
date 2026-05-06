@@ -137,7 +137,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
         title = "Columnar result",
         description = "Optional boolean to choose results in columnar way or not. Default is false"
     )
-    @PluginProperty(dynamic = true, group = "processing")
+    @PluginProperty(dynamic = true, group = "destination")
     private Property<Boolean> columnar = Property.ofValue(false);
 
 
@@ -146,7 +146,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
         title = "Async query",
         description = "Optional boolean to choose to run query using the async endpoint of Elasticsearch. Default is false"
     )
-    @PluginProperty(dynamic = true, group = "processing")
+    @PluginProperty(dynamic = true, group = "connection")
     private Property<Boolean> async = Property.ofValue(false);
 
 
@@ -242,6 +242,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
 
     private void addToParams(String object, QueryRequest.Builder builder) {
         Object parsed = parse(object);
+        // `builder.params()` has several implementations with parameter override. Need to find the corresponding type.
         switch (parsed) {
             case Integer i -> builder.params(i);
             case Long l -> builder.params(l);
