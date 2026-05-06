@@ -125,6 +125,13 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     @PluginProperty(dynamic = true, group = "processing")
     private Object filter;
 
+    @Schema(
+        title = "Query params",
+        description = "Optional parameters. Available from 9.1 ES clusters. Using the anonymous syntax : add a question mark for each parameter in your query. It will be taken in same order as in parameter list"
+    )
+    @PluginProperty(dynamic = true, group = "processing")
+    private List<String> params;
+
     @Builder.Default
     @Schema(
         title = "Columnar result",
@@ -159,6 +166,12 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
                     if (filter != null) {
                         SearchRequest.Builder request = QueryService.request(runContext, this.filter);
                         builder.filter(request.build().query());
+                    }
+
+                    if (params != null) {
+                        for (String param : params) {
+                            addToParams(param, builder);
+                        }
                     }
 
                     return builder;
@@ -225,6 +238,39 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
             return outputBuilder
                 .build();
         }
+    }
+
+    private void addToParams(String object, QueryRequest.Builder builder) {
+        Object parsed = parse(object);
+        switch (parsed) {
+            case Integer i -> builder.params(i);
+            case Long l -> builder.params(l);
+            case Double d -> builder.params(d);
+            case Boolean b -> builder.params(b);
+            case String str -> builder.params(str);
+            default -> throw new IllegalArgumentException("Invalid parameter type on '" + object + "' and type '" + parsed.getClass() + "'");
+        }
+
+    }
+
+    private Object parse(String s) {
+        if (s == null) return null;
+        if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("false")) {
+            return Boolean.parseBoolean(s);
+        }
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException ignored) {
+        }
+        try {
+            return Long.parseLong(s);
+        } catch (NumberFormatException ignored) {
+        }
+        try {
+            return Double.parseDouble(s);
+        } catch (NumberFormatException ignored) {
+        }
+        return s;  // fallback: keep as string
     }
 
     protected Pair<URI, Long> store(RunContext runContext, Iterable<Map<String, Object>> searchResponse) throws IOException {

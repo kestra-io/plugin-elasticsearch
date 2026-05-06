@@ -85,6 +85,25 @@ class EsqlTest extends ElsContainer {
     }
 
     @Test
+    void params() throws Exception {
+        RunContext runContext = runContextFactory.of();
+
+        Esql task = Esql.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .query(Property.ofValue("""
+                FROM gbif
+                | WHERE key == ? AND genericName == ?
+                """))
+            .params(List.of("925277090", "Larus"))
+            .build();
+
+        Esql.Output run = task.run(runContext);
+
+        assertThat(run.getSize(), is(1));
+        assertThat(run.getRows().getFirst().get("genericName"), is("Larus"));
+    }
+
+    @Test
     void columnar() throws Exception {
         RunContext runContext = runContextFactory.of();
 
@@ -102,7 +121,7 @@ class EsqlTest extends ElsContainer {
         assertThat(run.getSize(), is(143));
         List<String> basisOfRecord = (List<String>) run.getRows().getFirst().get("basisOfRecord");
         assertThat(basisOfRecord.size(), is(28));
-        assertThat(basisOfRecord.get(0), is("MACHINE_OBSERVATION"));
+        assertThat(basisOfRecord.getFirst(), is("MACHINE_OBSERVATION"));
 
     }
 

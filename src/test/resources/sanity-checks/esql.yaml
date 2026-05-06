@@ -68,8 +68,9 @@ tasks:
     columnar: true
     query: |
       FROM {{ vars.index_name }}
-      | WHERE country == "France"
+      | WHERE country == ?
       | SORT city
+    params: ["France"]
 
   - id: assert_columnar
     type: io.kestra.plugin.core.execution.Assert
