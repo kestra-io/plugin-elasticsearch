@@ -136,7 +136,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
         title = "Query params",
         description = "Optional parameters. Add a question mark (`?`) for each parameter in your query, in order. Parameters are interpolated client-side before the query is sent"
     )
-    @PluginProperty(dynamic = true, group = "processing")
+    @PluginProperty(group = "processing")
     private Property<List<String>> params;
 
     @Builder.Default
@@ -144,7 +144,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
         title = "Columnar result",
         description = "Optional boolean to choose results in columnar way or not. Default is false"
     )
-    @PluginProperty(dynamic = true, group = "processing")
+    @PluginProperty(group = "processing")
     private Property<Boolean> columnar = Property.ofValue(false);
 
 
