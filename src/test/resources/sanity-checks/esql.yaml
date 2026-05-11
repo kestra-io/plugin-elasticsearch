@@ -59,13 +59,14 @@ tasks:
       - "{{ outputs.esql.rows[1].city == 'Paris' }}"
       - "{{ outputs.esql.rows[1].country == 'France' }}"
 
-  - id: esql_columnar
+  - id: esql_columnar_async_parameters
     type: io.kestra.plugin.elasticsearch.Esql
     connection:
       hosts:
         - "{{ inputs.cs }}"
     fetchType: FETCH
     columnar: true
+    async: true
     query: |
       FROM {{ vars.index_name }}
       | WHERE country == ?
@@ -74,10 +75,10 @@ tasks:
 
   - id: assert_columnar
     type: io.kestra.plugin.core.execution.Assert
-    errorMessage: "Invalid esql {{ outputs.esql_columnar.rows }}"
+    errorMessage: "Invalid esql {{ outputs.esql_columnar_async_parameters.rows }}"
     conditions:
-      - "{{ outputs.esql_columnar.size == 4 }}"
-      - "{{ outputs.esql_columnar.rows[0].city[0] == 'Lille' }}"
-      - "{{ outputs.esql_columnar.rows[2].country[0] == 'France' }}"
-      - "{{ outputs.esql_columnar.rows[0].city[1] == 'Paris' }}"
-      - "{{ outputs.esql_columnar.rows[2].country[1] == 'France' }}"
+      - "{{ outputs.esql_columnar_async_parameters.size == 4 }}"
+      - "{{ outputs.esql_columnar_async_parameters.rows[0].city[0] == 'Lille' }}"
+      - "{{ outputs.esql_columnar_async_parameters.rows[2].country[0] == 'France' }}"
+      - "{{ outputs.esql_columnar_async_parameters.rows[0].city[1] == 'Paris' }}"
+      - "{{ outputs.esql_columnar_async_parameters.rows[2].country[1] == 'France' }}"

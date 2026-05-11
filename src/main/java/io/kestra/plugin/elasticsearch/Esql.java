@@ -1,13 +1,15 @@
 package io.kestra.plugin.elasticsearch;
 
-import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._helpers.esql.EsqlAdapter;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.esql.ElasticsearchEsqlAsyncClient;
 import co.elastic.clients.elasticsearch.esql.EsqlFormat;
 import co.elastic.clients.elasticsearch.esql.QueryRequest;
+import co.elastic.clients.json.JsonpUtils;
+import co.elastic.clients.transport.endpoints.BinaryResponse;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Iterables;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
@@ -19,22 +21,25 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
+import io.kestra.core.serializers.JacksonMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import reactor.core.publisher.Flux;
 
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -191,11 +196,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
 
             Iterable<Map<String, Object>> queryResponse;
             if (runContext.render(this.async).as(Boolean.class).orElse(false)) {
-                // Warning : use of internal method `_transport` because it is not possible to create an ElasticsearchEsqlAsyncClient from a ElasticsearchClient
-                ElasticsearchEsqlAsyncClient esqlAsyncClient =
-                    new ElasticsearchAsyncClient(client._transport()).esql();
-                CompletableFuture<Iterable<Map<String, Object>>> queryResponseCompletableFuture = esqlAsyncClient.query(ForkObjectsEsqlAdapter.of(TYPE_REFERENCE.getType()), queryRequest);
-                queryResponse = queryResponseCompletableFuture.get();
+                queryResponse = runAsyncQuery(runContext, client, queryRequest, adapter, logger);
             } else {
                 queryResponse = client
                     .esql()
@@ -240,6 +241,99 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
             return outputBuilder
                 .build();
         }
+    }
+
+    private static final String ASYNC_KEEP_ALIVE = "5m";
+    private static final String ASYNC_POLL_TIMEOUT = "30s";
+
+    private Iterable<Map<String, Object>> runAsyncQuery(
+        RunContext runContext,
+        ElasticsearchClient client,
+        QueryRequest queryRequest,
+        EsqlAdapter<Iterable<Map<String, Object>>> adapter,
+        Logger logger
+    ) throws Exception {
+        String body = buildAsyncBody(JsonpUtils.toJsonString(queryRequest, client._jsonpMapper()));
+
+        try (Rest5Client lowLevel = this.connection.client(runContext)) {
+            byte[] responseBytes = submitAsyncQuery(lowLevel, body);
+            JsonNode response = JacksonMapper.ofJson().readTree(responseBytes);
+            String asyncId = response.path("id").isMissingNode() ? null : response.path("id").asText();
+
+            try {
+                while (response.path("is_running").asBoolean(false)) {
+                    if (asyncId == null) {
+                        throw new IllegalStateException("ES|QL async response is still running but did not return an id");
+                    }
+                    logger.debug("Polling ES|QL async query id={}", asyncId);
+                    responseBytes = pollAsyncQuery(lowLevel, asyncId);
+                    response = JacksonMapper.ofJson().readTree(responseBytes);
+                }
+
+                return adapter.deserialize(client.esql(), queryRequest, bufferedBinaryResponse(responseBytes));
+            } finally {
+                if (asyncId != null) {
+                    deleteAsyncQuery(lowLevel, asyncId, logger);
+                }
+            }
+        }
+    }
+
+    private byte[] submitAsyncQuery(Rest5Client lowLevel, String body) throws IOException {
+        var request = new co.elastic.clients.transport.rest5_client.low_level.Request("POST", "_query/async");
+        request.setJsonEntity(body);
+        return readBody(lowLevel.performRequest(request));
+    }
+
+    private static String buildAsyncBody(String queryRequestJson) throws IOException {
+        var mapper = JacksonMapper.ofJson();
+        com.fasterxml.jackson.databind.node.ObjectNode body = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(queryRequestJson);
+        body.put("wait_for_completion_timeout", "0s");
+        body.put("keep_alive", ASYNC_KEEP_ALIVE);
+        return mapper.writeValueAsString(body);
+    }
+
+    private byte[] pollAsyncQuery(Rest5Client lowLevel, String id) throws IOException {
+        var request = new co.elastic.clients.transport.rest5_client.low_level.Request("GET", "_query/async/" + id);
+        request.addParameter("wait_for_completion_timeout", ASYNC_POLL_TIMEOUT);
+        return readBody(lowLevel.performRequest(request));
+    }
+
+    private void deleteAsyncQuery(Rest5Client lowLevel, String id, Logger logger) {
+        try {
+            lowLevel.performRequest(new co.elastic.clients.transport.rest5_client.low_level.Request("DELETE", "_query/async/" + id));
+        } catch (Exception e) {
+            logger.warn("Failed to delete async ES|QL query {}", id, e);
+        }
+    }
+
+    private static byte[] readBody(co.elastic.clients.transport.rest5_client.low_level.Response response) throws IOException {
+        return IOUtils.toByteArray(response.getEntity().getContent());
+    }
+
+    private static BinaryResponse bufferedBinaryResponse(byte[] body) {
+        return new BinaryResponse() {
+            private final InputStream stream = new ByteArrayInputStream(body);
+
+            @Override
+            public String contentType() {
+                return "application/json";
+            }
+
+            @Override
+            public long contentLength() {
+                return body.length;
+            }
+
+            @Override
+            public InputStream content() {
+                return stream;
+            }
+
+            @Override
+            public void close() {
+            }
+        };
     }
 
     private void addToParams(String object, QueryRequest.Builder builder) {
