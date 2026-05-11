@@ -94,7 +94,7 @@ class EsqlTest extends ElsContainer {
                 FROM gbif
                 | WHERE key == ? AND genericName == ?
                 """))
-            .params(List.of("925277090", "Larus"))
+            .params(Property.ofValue(List.of("925277090", "Larus")))
             .build();
 
         Esql.Output run = task.run(runContext);

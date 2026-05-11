@@ -130,14 +130,14 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
         description = "Optional parameters. Available from 9.1 ES clusters. Using the anonymous syntax : add a question mark for each parameter in your query. It will be taken in same order as in parameter list"
     )
     @PluginProperty(dynamic = true, group = "processing")
-    private List<String> params;
+    private Property<List<String>> params;
 
     @Builder.Default
     @Schema(
         title = "Columnar result",
         description = "Optional boolean to choose results in columnar way or not. Default is false"
     )
-    @PluginProperty(dynamic = true, group = "destination")
+    @PluginProperty(dynamic = true, group = "processing")
     private Property<Boolean> columnar = Property.ofValue(false);
 
 
@@ -156,7 +156,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
 
         try (ElasticsearchClient client = this.connection.highLevelClient(runContext)) {
             // build request
-            Boolean rColumnar = runContext.render(this.columnar).as(Boolean.class).orElseThrow();
+            Boolean rColumnar = runContext.render(this.columnar).as(Boolean.class).orElse(false);
             QueryRequest queryRequest = QueryRequest.of(throwFunction(builder ->
                 {
                     builder.query(runContext.render(this.query).as(String.class).orElseThrow());
@@ -169,7 +169,9 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
                     }
 
                     if (params != null) {
-                        for (String param : params) {
+                        //noinspection unchecked
+                        var rParams = runContext.render(this.params).as((Class<List<String>>) (Class<?>) List.class).orElse(List.of());
+                        for (String param : rParams) {
                             addToParams(param, builder);
                         }
                     }
@@ -188,7 +190,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
             }
 
             Iterable<Map<String, Object>> queryResponse;
-            if (runContext.render(this.async).as(Boolean.class).orElseThrow()) {
+            if (runContext.render(this.async).as(Boolean.class).orElse(false)) {
                 // Warning : use of internal method `_transport` because it is not possible to create an ElasticsearchEsqlAsyncClient from a ElasticsearchClient
                 ElasticsearchEsqlAsyncClient esqlAsyncClient =
                     new ElasticsearchAsyncClient(client._transport()).esql();
