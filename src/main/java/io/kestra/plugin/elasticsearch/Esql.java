@@ -40,6 +40,8 @@ import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -132,7 +134,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
 
     @Schema(
         title = "Query params",
-        description = "Optional parameters. Available from 9.1 ES clusters. Using the anonymous syntax : add a question mark for each parameter in your query. It will be taken in same order as in parameter list"
+        description = "Optional parameters. Add a question mark (`?`) for each parameter in your query, in order. Parameters are interpolated client-side before the query is sent"
     )
     @PluginProperty(dynamic = true, group = "processing")
     private Property<List<String>> params;
@@ -162,23 +164,22 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
         try (ElasticsearchClient client = this.connection.highLevelClient(runContext)) {
             // build request
             Boolean rColumnar = runContext.render(this.columnar).as(Boolean.class).orElse(false);
+            String renderedQuery = runContext.render(this.query).as(String.class).orElseThrow();
+            //noinspection unchecked
+            List<String> rParams = this.params == null
+                ? List.of()
+                : runContext.render(this.params).as((Class<List<String>>) (Class<?>) List.class).orElse(List.of());
+            String finalQuery = interpolateParams(renderedQuery, rParams);
+
             QueryRequest queryRequest = QueryRequest.of(throwFunction(builder ->
                 {
-                    builder.query(runContext.render(this.query).as(String.class).orElseThrow());
+                    builder.query(finalQuery);
                     builder.format(EsqlFormat.Json);
                     builder.columnar(rColumnar);
 
                     if (filter != null) {
                         SearchRequest.Builder request = QueryService.request(runContext, this.filter);
                         builder.filter(request.build().query());
-                    }
-
-                    if (params != null) {
-                        //noinspection unchecked
-                        var rParams = runContext.render(this.params).as((Class<List<String>>) (Class<?>) List.class).orElse(List.of());
-                        for (String param : rParams) {
-                            addToParams(param, builder);
-                        }
                     }
 
                     return builder;
@@ -336,21 +337,64 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
         };
     }
 
-    private void addToParams(String object, QueryRequest.Builder builder) {
-        Object parsed = parse(object);
-        // `builder.params()` has several implementations with parameter override. Need to find the corresponding type.
-        switch (parsed) {
-            case Integer i -> builder.params(i);
-            case Long l -> builder.params(l);
-            case Double d -> builder.params(d);
-            case Boolean b -> builder.params(b);
-            case String str -> builder.params(str);
-            default -> throw new IllegalArgumentException("Invalid parameter type on '" + object + "' and type '" + parsed.getClass() + "'");
+    /**
+     * Matches one ES|QL token at a time so {@link Matcher#appendReplacement} can rewrite only the `?` placeholders
+     * while preserving any `?` that happens to live inside a string literal or a backticked identifier.
+     * see <a href="https://www.elastic.co/docs/reference/query-languages/esql/esql-rest#esql-rest-identifier-params">ES documentation</a>
+     */
+    private static final Pattern QUERY_TOKEN = Pattern.compile(
+        "\"\"\".*?\"\"\""              // triple-quoted raw string
+        + "|\"(?:\\\\.|[^\"\\\\])*\""  // double-quoted string with backslash escapes
+        + "|`[^`]*`"                   // backtick-quoted identifier
+        + "|\\?",                      // anonymous placeholder
+        Pattern.DOTALL
+    );
+
+    private static String interpolateParams(String query, List<String> params) {
+        if (params.isEmpty()) {
+            return query;
         }
 
+        Matcher matcher = QUERY_TOKEN.matcher(query);
+        StringBuilder out = new StringBuilder(query.length() + params.size() * 8);
+        int paramIdx = 0;
+
+        while (matcher.find()) {
+            String token = matcher.group();
+            String replacement;
+            if (token.equals("?")) {
+                if (paramIdx >= params.size()) {
+                    throw new IllegalArgumentException("Query contains more `?` placeholders than the provided params list (" + params.size() + ")");
+                }
+                replacement = formatParamLiteral(params.get(paramIdx++));
+            } else {
+                replacement = token;
+            }
+            matcher.appendReplacement(out, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(out);
+
+        if (paramIdx < params.size()) {
+            throw new IllegalArgumentException("Provided params list has " + params.size() + " entries but the query only contains " + paramIdx + " `?` placeholders");
+        }
+
+        return out.toString();
     }
 
-    private Object parse(String s) {
+    private static String formatParamLiteral(String raw) {
+        Object parsed = parse(raw);
+        return switch (parsed) {
+            case Integer i -> Integer.toString(i);
+            case Long l -> Long.toString(l);
+            case Double d -> Double.toString(d);
+            case Boolean b -> Boolean.toString(b);
+            case String s -> "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+            case null -> "null";
+            default -> throw new IllegalArgumentException("Invalid parameter type on '" + raw + "' and type '" + parsed.getClass() + "'");
+        };
+    }
+
+    private static Object parse(String s) {
         if (s == null) return null;
         if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("false")) {
             return Boolean.parseBoolean(s);
