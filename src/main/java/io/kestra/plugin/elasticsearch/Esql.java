@@ -147,7 +147,6 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     @PluginProperty(group = "processing")
     private Property<Boolean> columnar = Property.ofValue(false);
 
-
     @Builder.Default
     @Schema(
         title = "Async query",
