@@ -1,21 +1,19 @@
 package io.kestra.plugin.elasticsearch;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import org.junit.jupiter.api.Test;
-
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.tenant.TenantService;
-
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -65,6 +63,66 @@ class EsqlTest extends ElsContainer {
 
         assertThat(run.getSize(), is(1));
         assertThat(run.getRows().getFirst().get("genericName"), is("Larus"));
+    }
+
+    @Test
+    void async() throws Exception {
+        RunContext runContext = runContextFactory.of();
+
+        Esql task = Esql.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .query(Property.ofValue("""
+                FROM gbif
+                | WHERE key == 925277090
+                """))
+            .async(Property.ofValue(true))
+            .build();
+
+        Esql.Output run = task.run(runContext);
+
+        assertThat(run.getSize(), is(1));
+        assertThat(run.getRows().getFirst().get("genericName"), is("Larus"));
+    }
+
+    @Test
+    void params() throws Exception {
+        RunContext runContext = runContextFactory.of();
+
+        Esql task = Esql.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .query(Property.ofValue("""
+                FROM gbif
+                | WHERE key == ? AND genericName == ?
+                """))
+            .params(Property.ofValue(List.of("925277090", "Larus")))
+            .build();
+
+        Esql.Output run = task.run(runContext);
+
+        assertThat(run.getSize(), is(1));
+        assertThat(run.getRows().getFirst().get("genericName"), is("Larus"));
+    }
+
+    @Test
+    void columnar() throws Exception {
+        RunContext runContext = runContextFactory.of();
+
+        Esql task = Esql.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .query(Property.ofValue("""
+                FROM gbif
+                | WHERE publishingCountry.keyword == "BE"
+                """))
+            .columnar(Property.ofValue(true))
+            .build();
+
+        Esql.Output run = task.run(runContext);
+
+        assertThat(run.getSize(), is(143));
+        List<String> basisOfRecord = (List<String>) run.getRows().getFirst().get("basisOfRecord");
+        assertThat(basisOfRecord.size(), is(28));
+        assertThat(basisOfRecord.getFirst(), is("MACHINE_OBSERVATION"));
+
     }
 
     @Test
