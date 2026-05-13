@@ -54,7 +54,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @NoArgsConstructor
 @Schema(
     title = "Run ES|QL query",
-    description = "Executes an ES|QL query and returns hits in different formats. Defaults to `fetchType=FETCH`; STORE writes results to Kestra internal storage. Only the current result set is processed—no pagination."
+    description = "Executes an ES|QL query and returns results in different formats. Supports synchronous and async execution, optional query parameters (client-side interpolation), and columnar output. Defaults to `fetchType=FETCH`; `STORE` writes results to Kestra internal storage. Only the current result set is processed — no pagination."
 )
 @Plugin(
     metrics = {
@@ -62,6 +62,45 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
         @Metric(name = "records", type = Counter.TYPE, unit = "records", description = "Number of records returned")
     },
     examples = {
+        @Example(
+            title = "Aggregate error counts by service using dynamic parameters and async execution.",
+            full = true,
+            code = """
+                id: esql_error_report
+                namespace: company.team
+
+                inputs:
+                  - id: service
+                    type: STRING
+                    defaults: "api"
+                  - id: since
+                    type: STRING
+                    defaults: "2024-01-01T00:00:00Z"
+
+                tasks:
+                  - id: query
+                    type: io.kestra.plugin.elasticsearch.Esql
+                    fetchType: STORE
+                    async: true
+                    query: |
+                      FROM logs
+                      | WHERE service == ? AND @timestamp >= ?
+                      | STATS error_count = COUNT(*) BY level, host
+                      | SORT error_count DESC
+                    params:
+                      - "{{ inputs.service }}"
+                      - "{{ inputs.since }}"
+
+                pluginDefaults:
+                  - type: io.kestra.plugin.elasticsearch
+                    values:
+                      connection:
+                        headers:
+                          - "Authorization: ApiKey yourEncodedApiKey"
+                        hosts:
+                          - https://yourCluster.us-central1.gcp.cloud.es.io:443
+                """
+        ),
         @Example(
             title = "Load data in bulk to Elasticsearch and query it using ES|QL.",
             full = true,
@@ -133,24 +172,24 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     private Object filter;
 
     @Schema(
-        title = "Query params",
-        description = "Optional parameters. Add a question mark (`?`) for each parameter in your query, in order. Parameters are interpolated client-side before the query is sent"
+        title = "Query parameters",
+        description = "Positional parameters for the query. Add one `?` placeholder per parameter, in order. Values are substituted client-side (string interpolation) before the query is sent — this is not a server-side parameterized query. Each value is auto-typed: checked first as boolean (`true`/`false`), then integer, then long, then double, and kept as a quoted string if nothing else matches. Example: `params: [\"42\", \"true\", \"hello\"]` produces `42`, `true`, and `\"hello\"` in the query."
     )
     @PluginProperty(group = "processing")
     private Property<List<String>> params;
 
     @Builder.Default
     @Schema(
-        title = "Columnar result",
-        description = "Optional boolean to choose results in columnar way or not. Default is false"
+        title = "Return results in columnar format",
+        description = "When `true`, uses the ES|QL columnar response format. The `rows` output then contains one entry per **column** (not per document): each entry is a single-key map of `{columnName: [value1, value2, ...]}` where the array holds all values for that column across every matched document. Default is `false`, which returns one entry per row."
     )
     @PluginProperty(group = "processing")
     private Property<Boolean> columnar = Property.ofValue(false);
 
     @Builder.Default
     @Schema(
-        title = "Async query",
-        description = "Optional boolean to choose to run query using the async endpoint of Elasticsearch. Default is false"
+        title = "Run query asynchronously",
+        description = "When `true`, submits the query via the ES|QL async endpoint and polls until complete. Use for long-running analytical queries that would time out on the synchronous endpoint. The query is kept alive for up to 5 minutes. Default is `false`."
     )
     @PluginProperty(dynamic = true, group = "connection")
     private Property<Boolean> async = Property.ofValue(false);
@@ -459,7 +498,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
 
         @Schema(
             title = "Fetched rows",
-            description = "Populated when `fetchType=FETCH`; contains all rows from the response."
+            description = "Populated when `fetchType=FETCH`. In normal mode, each entry is a document: `{field: value, ...}`. In columnar mode (`columnar=true`), each entry is a column: `{columnName: [value1, value2, ...]}`, so the list length equals the number of columns, not the number of documents."
         )
         private List<Map<String, Object>> rows;
 
