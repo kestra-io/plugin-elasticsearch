@@ -1,8 +1,8 @@
 package io.kestra.plugin.elasticsearch;
 
-import java.io.BufferedWriter;
+import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.executions.metrics.Timer;
 import io.kestra.core.models.property.Property;
@@ -33,7 +34,6 @@ import lombok.experimental.SuperBuilder;
 import reactor.core.publisher.Flux;
 
 import static io.kestra.core.utils.Rethrow.throwConsumer;
-import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -135,7 +135,7 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
     protected Pair<URI, Long> store(RunContext runContext, SearchResponse<Map> searchResponse) throws IOException {
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
 
-        try (var output = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)) {
+        try (var output = new BufferedOutputStream(new FileOutputStream(tempFile), FileSerde.BUFFER_SIZE)) {
             Flux<Map> hitFlux = Flux.fromIterable(searchResponse.hits().hits()).map(hit -> hit.source());
             Long count = FileSerde.writeAll(output, hitFlux).block();
 

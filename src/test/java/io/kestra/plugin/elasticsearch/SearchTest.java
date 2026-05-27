@@ -1,7 +1,6 @@
 package io.kestra.plugin.elasticsearch;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.BufferedInputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -103,9 +102,9 @@ class SearchTest extends ElsContainer {
         assertThat(run.getTotal(), is(28L));
         assertThat(run.getUri(), notNullValue());
 
-        BufferedReader inputStream = new BufferedReader(new InputStreamReader(storageInterface.get(TenantService.MAIN_TENANT, null, run.getUri())));
+        var inputStream = new BufferedInputStream(storageInterface.get(TenantService.MAIN_TENANT, null, run.getUri()), FileSerde.BUFFER_SIZE);
         List<Map<String, Object>> result = new ArrayList<>();
-        FileSerde.reader(inputStream, r -> result.add((Map<String, Object>) r));
+        FileSerde.read(inputStream, r -> result.add((Map<String, Object>) r));
 
         assertThat(result.get(8).get("key"), is(925311404));
     }

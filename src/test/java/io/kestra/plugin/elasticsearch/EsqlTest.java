@@ -1,19 +1,20 @@
 package io.kestra.plugin.elasticsearch;
 
+import java.io.BufferedInputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.tenant.TenantService;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import jakarta.inject.Inject;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -166,9 +167,9 @@ class EsqlTest extends ElsContainer {
         assertThat(run.getTotal(), is(10L));
         assertThat(run.getUri(), notNullValue());
 
-        BufferedReader inputStream = new BufferedReader(new InputStreamReader(storageInterface.get(TenantService.MAIN_TENANT, null, run.getUri())));
+        var inputStream = new BufferedInputStream(storageInterface.get(TenantService.MAIN_TENANT, null, run.getUri()), FileSerde.BUFFER_SIZE);
         List<Map<String, Object>> result = new ArrayList<>();
-        FileSerde.reader(inputStream, r -> result.add((Map<String, Object>) r));
+        FileSerde.read(inputStream, r -> result.add((Map<String, Object>) r));
 
         assertThat(result.get(8).get("key"), is(925311404));
     }

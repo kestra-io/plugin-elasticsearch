@@ -1,16 +1,27 @@
 package io.kestra.plugin.elasticsearch;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._helpers.esql.EsqlAdapter;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.esql.EsqlFormat;
-import co.elastic.clients.elasticsearch.esql.QueryRequest;
-import co.elastic.clients.json.JsonpUtils;
-import co.elastic.clients.transport.endpoints.BinaryResponse;
-import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Iterables;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -22,28 +33,20 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.serializers.JacksonMapper;
+
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._helpers.esql.EsqlAdapter;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.esql.EsqlFormat;
+import co.elastic.clients.elasticsearch.esql.QueryRequest;
+import co.elastic.clients.json.JsonpUtils;
+import co.elastic.clients.transport.endpoints.BinaryResponse;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.slf4j.Logger;
 import reactor.core.publisher.Flux;
-
-import java.io.BufferedWriter;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
@@ -155,7 +158,6 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     @PluginProperty(dynamic = true, group = "connection")
     private Property<Boolean> async = Property.ofValue(false);
 
-
     @Override
     public Esql.Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
@@ -171,20 +173,19 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
             String finalQuery = interpolateParams(renderedQuery, rParams);
 
             QueryRequest queryRequest = QueryRequest.of(throwFunction(builder ->
-                {
-                    builder.query(finalQuery);
-                    builder.format(EsqlFormat.Json);
-                    builder.columnar(rColumnar);
+            {
+                builder.query(finalQuery);
+                builder.format(EsqlFormat.Json);
+                builder.columnar(rColumnar);
 
-                    if (filter != null) {
-                        SearchRequest.Builder request = QueryService.request(runContext, this.filter);
-                        builder.filter(request.build().query());
-                    }
-
-                    return builder;
+                if (filter != null) {
+                    SearchRequest.Builder request = QueryService.request(runContext, this.filter);
+                    builder.filter(request.build().query());
                 }
-            ));
 
+                return builder;
+            }
+            ));
 
             logger.debug("Starting query: {}", query);
 
@@ -251,8 +252,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
         ElasticsearchClient client,
         QueryRequest queryRequest,
         EsqlAdapter<Iterable<Map<String, Object>>> adapter,
-        Logger logger
-    ) throws Exception {
+        Logger logger) throws Exception {
         String body = buildAsyncBody(JsonpUtils.toJsonString(queryRequest, client._jsonpMapper()));
 
         try (Rest5Client lowLevel = this.connection.client(runContext)) {
@@ -342,10 +342,10 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
      * see <a href="https://www.elastic.co/docs/reference/query-languages/esql/esql-rest#esql-rest-identifier-params">ES documentation</a>
      */
     private static final Pattern QUERY_TOKEN = Pattern.compile(
-        "\"\"\".*?\"\"\""              // triple-quoted raw string
-        + "|\"(?:\\\\.|[^\"\\\\])*\""  // double-quoted string with backslash escapes
-        + "|`[^`]*`"                   // backtick-quoted identifier
-        + "|\\?",                      // anonymous placeholder
+        "\"\"\".*?\"\"\"" // triple-quoted raw string
+            + "|\"(?:\\\\.|[^\"\\\\])*\"" // double-quoted string with backslash escapes
+            + "|`[^`]*`" // backtick-quoted identifier
+            + "|\\?", // anonymous placeholder
         Pattern.DOTALL
     );
 
@@ -394,7 +394,8 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     }
 
     private static Object parse(String s) {
-        if (s == null) return null;
+        if (s == null)
+            return null;
         if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("false")) {
             return Boolean.parseBoolean(s);
         }
@@ -410,13 +411,13 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
             return Double.parseDouble(s);
         } catch (NumberFormatException ignored) {
         }
-        return s;  // fallback: keep as string
+        return s; // fallback: keep as string
     }
 
     protected Pair<URI, Long> store(RunContext runContext, Iterable<Map<String, Object>> searchResponse) throws IOException {
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
 
-        try (var output = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)) {
+        try (var output = new BufferedOutputStream(new FileOutputStream(tempFile), FileSerde.BUFFER_SIZE)) {
             Flux<Map<String, Object>> hitFlux = Flux.fromIterable(searchResponse);
             Long count = FileSerde.writeAll(output, hitFlux).block();
 
