@@ -74,7 +74,7 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
 
         try (
             ElasticsearchClient client = this.connection.highLevelClient(runContext);
-            Writer output = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)
+            OutputStream output = new BufferedOutputStream(new FileOutputStream(tempFile), FileSerde.BUFFER_SIZE)
         ) {
             // build request
             SearchRequest.Builder request = this.request(runContext);

@@ -1,7 +1,6 @@
 package io.kestra.plugin.elasticsearch;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.BufferedInputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +67,66 @@ class EsqlTest extends ElsContainer {
     }
 
     @Test
+    void async() throws Exception {
+        RunContext runContext = runContextFactory.of();
+
+        Esql task = Esql.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .query(Property.ofValue("""
+                FROM gbif
+                | WHERE key == 925277090
+                """))
+            .async(Property.ofValue(true))
+            .build();
+
+        Esql.Output run = task.run(runContext);
+
+        assertThat(run.getSize(), is(1));
+        assertThat(run.getRows().getFirst().get("genericName"), is("Larus"));
+    }
+
+    @Test
+    void params() throws Exception {
+        RunContext runContext = runContextFactory.of();
+
+        Esql task = Esql.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .query(Property.ofValue("""
+                FROM gbif
+                | WHERE key == ? AND genericName == ?
+                """))
+            .params(Property.ofValue(List.of("925277090", "Larus")))
+            .build();
+
+        Esql.Output run = task.run(runContext);
+
+        assertThat(run.getSize(), is(1));
+        assertThat(run.getRows().getFirst().get("genericName"), is("Larus"));
+    }
+
+    @Test
+    void columnar() throws Exception {
+        RunContext runContext = runContextFactory.of();
+
+        Esql task = Esql.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .query(Property.ofValue("""
+                FROM gbif
+                | WHERE publishingCountry.keyword == "BE"
+                """))
+            .columnar(Property.ofValue(true))
+            .build();
+
+        Esql.Output run = task.run(runContext);
+
+        assertThat(run.getSize(), is(143));
+        List<String> basisOfRecord = (List<String>) run.getRows().getFirst().get("basisOfRecord");
+        assertThat(basisOfRecord.size(), is(28));
+        assertThat(basisOfRecord.getFirst(), is("MACHINE_OBSERVATION"));
+
+    }
+
+    @Test
     void runFetchOne() throws Exception {
         RunContext runContext = runContextFactory.of();
 
@@ -108,9 +167,9 @@ class EsqlTest extends ElsContainer {
         assertThat(run.getTotal(), is(10L));
         assertThat(run.getUri(), notNullValue());
 
-        BufferedReader inputStream = new BufferedReader(new InputStreamReader(storageInterface.get(TenantService.MAIN_TENANT, null, run.getUri())));
+        var inputStream = new BufferedInputStream(storageInterface.get(TenantService.MAIN_TENANT, null, run.getUri()), FileSerde.BUFFER_SIZE);
         List<Map<String, Object>> result = new ArrayList<>();
-        FileSerde.reader(inputStream, r -> result.add((Map<String, Object>) r));
+        FileSerde.read(inputStream, r -> result.add((Map<String, Object>) r));
 
         assertThat(result.get(8).get("key"), is(925311404));
     }
