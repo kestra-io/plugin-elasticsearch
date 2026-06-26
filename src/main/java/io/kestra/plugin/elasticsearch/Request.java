@@ -37,7 +37,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @Plugin(
     examples = {
         @Example(
-            title = "Inserting a document in an index using POST request.",
+            title = "Inserting a document in an index using POST request",
             full = true,
             code = """
                 id: elasticsearch_request
@@ -56,7 +56,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
                 """
         ),
         @Example(
-            title = "Searching for documents using GET request.",
+            title = "Searching for documents using GET request",
             full = true,
             code = """
                 id: elasticsearch_request
@@ -71,11 +71,11 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
                     method: "GET"
                     endpoint: "my_index/_search"
                     parameters:
-                      q: "name:\"John Doe\""
+                      q: 'name:"John Doe"'
                 """
         ),
         @Example(
-            title = "Deleting document using DELETE request.",
+            title = "Deleting document using DELETE request",
             full = true,
             code = """
                 id: elasticsearch_request

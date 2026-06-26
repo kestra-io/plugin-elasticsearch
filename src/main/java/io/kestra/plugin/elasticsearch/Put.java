@@ -40,7 +40,7 @@ import lombok.experimental.SuperBuilder;
 @Plugin(
     examples = {
         @Example(
-            title = "Put a document with a Map.",
+            title = "Put a document with a Map",
             full = true,
             code = """
                 id: elasticsearch_put
@@ -60,7 +60,7 @@ import lombok.experimental.SuperBuilder;
                 """
         ),
         @Example(
-            title = "Put a document from a JSON string.",
+            title = "Put a document from a JSON string",
             full = true,
             code = """
                 id: elasticsearch_put
