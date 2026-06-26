@@ -68,7 +68,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
 
     @Schema(
-        title = "The elasticsearch index."
+        title = "The elasticsearch index"
     )
     @NotNull
     @PluginProperty(group = "main")

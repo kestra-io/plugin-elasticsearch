@@ -66,7 +66,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
     },
     examples = {
         @Example(
-            title = "Aggregate error counts by service using dynamic parameters and async execution.",
+            title = "Aggregate error counts by service using dynamic parameters and async execution",
             full = true,
             code = """
                 id: esql_error_report
@@ -105,7 +105,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                 """
         ),
         @Example(
-            title = "Load data in bulk to Elasticsearch and query it using ES|QL.",
+            title = "Load data in bulk to Elasticsearch and query it using ES|QL",
             full = true,
             code = """
                 id: bulk_load_and_query
