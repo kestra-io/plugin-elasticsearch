@@ -66,7 +66,7 @@ public class ElasticsearchConnection {
         title = "Custom HTTP headers",
         description = "Headers sent on every request in `Name: Value` format, e.g. `Authorization: Token XYZ`."
     )
-    @PluginProperty(group = "advanced")
+    @PluginProperty(group = "advanced", secret = true)
     private Property<List<String>> headers;
 
     @Schema(
@@ -131,6 +131,10 @@ public class ElasticsearchConnection {
         });
 
         if (runContext.render(this.trustAllSsl).as(Boolean.class).orElse(false)) {
+            runContext.logger().warn(
+                "`trustAllSsl` is enabled: TLS certificate and hostname verification are disabled for this Elasticsearch connection. " +
+                    "This makes the connection vulnerable to man-in-the-middle attacks and should only be used with self-signed certificates in non-production environments."
+            );
             try {
                 var sslContext = SSLContexts.custom()
                     .loadTrustMaterial(null, TrustAllStrategy.INSTANCE)
