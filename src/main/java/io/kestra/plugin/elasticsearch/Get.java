@@ -50,7 +50,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 )
 public class Get extends AbstractTask implements RunnableTask<Get.Output> {
     @Schema(
-        title = "The ElasticSearch index."
+        title = "The ElasticSearch index"
     )
     @NotNull
     @PluginProperty(group = "main")
