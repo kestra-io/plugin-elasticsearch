@@ -52,17 +52,7 @@ class BulkTest extends ElsContainer {
 
         File tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
         try (OutputStream output = new FileOutputStream(tempFile)) {
-            DATA.apply(indice)
-                .forEach(
-                    throwConsumer(
-                        s -> output.write(
-                            (JacksonMapper
-                                .ofJson()
-                                .writeValueAsString(s) + "\n")
-                                .getBytes(StandardCharsets.UTF_8)
-                        )
-                    )
-                );
+            FileSerde.writeAll(output, reactor.core.publisher.Flux.fromIterable(DATA.apply(indice))).block();
         }
 
         URI uri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
@@ -88,8 +78,7 @@ class BulkTest extends ElsContainer {
 
         File tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".ion");
         try (OutputStream output = new FileOutputStream(tempFile)) {
-            DATA.apply(indice)
-                .forEach(throwConsumer(s -> FileSerde.write(output, s)));
+            FileSerde.writeAll(output, reactor.core.publisher.Flux.fromIterable(DATA.apply(indice))).block();
         }
 
         URI uri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
