@@ -487,13 +487,13 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
             title = "Returned row count",
-            description = "Number of rows included in outputs for the selected fetch type."
+            description = "Number of rows included in outputs for the selected fetch type. In columnar mode (`columnar=true`) this reflects the number of columns, not rows."
         )
         private Integer size;
 
         @Schema(
             title = "Total rows reported",
-            description = "Total rows returned by the ES|QL response."
+            description = "Total rows returned by the ES|QL response. In columnar mode (`columnar=true`) this reflects the number of columns, not rows."
         )
         private Long total;
 
@@ -511,7 +511,7 @@ public class Esql extends AbstractTask implements RunnableTask<Esql.Output> {
 
         @Schema(
             title = "Stored rows URI",
-            description = "Populated when `fetchType=STORE`; Kestra internal storage path to the Ion file."
+            description = "Populated when `fetchType=STORE`; Kestra internal storage path to the ION file."
         )
         private URI uri;
     }

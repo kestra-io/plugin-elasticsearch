@@ -39,7 +39,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @NoArgsConstructor
 @Schema(
     title = "Replay Elasticsearch bulk file",
-    description = "Reads an Elasticsearch bulk file (NDJSON or Ion) from Kestra storage and replays operations. Follows the bulk file contract; see Elasticsearch bulk API docs for format."
+    description = "Reads an Elasticsearch bulk file (NDJSON or ION) from Kestra storage and replays operations. Follows the bulk file contract; see Elasticsearch bulk API docs for format."
 )
 @Plugin(
     metrics = {

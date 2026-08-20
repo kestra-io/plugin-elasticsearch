@@ -192,7 +192,7 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
 
         @Schema(
             title = "Stored hits URI",
-            description = "Available only when `fetchType=STORE`; Kestra internal storage path to the Ion file."
+            description = "Available only when `fetchType=STORE`; Kestra internal storage path to the ION file."
         )
         private URI uri;
     }
