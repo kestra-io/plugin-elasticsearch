@@ -85,6 +85,11 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.elasticsearch.Esql
                     fetchType: STORE
                     async: true
+                    connection:
+                      headers:
+                        - "Authorization: ApiKey yourEncodedApiKey"
+                      hosts:
+                        - https://yourCluster.us-central1.gcp.cloud.es.io:443
                     query: |
                       FROM logs
                       | WHERE service == ? AND @timestamp >= ?
@@ -93,15 +98,6 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     params:
                       - "{{ inputs.service }}"
                       - "{{ inputs.since }}"
-
-                pluginDefaults:
-                  - type: io.kestra.plugin.elasticsearch
-                    values:
-                      connection:
-                        headers:
-                          - "Authorization: ApiKey yourEncodedApiKey"
-                        hosts:
-                          - https://yourCluster.us-central1.gcp.cloud.es.io:443
                 """
         ),
         @Example(
@@ -119,6 +115,11 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                   - id: load
                     type: io.kestra.plugin.elasticsearch.Bulk
                     from: "{{ outputs.extract.uri }}"
+                    connection:
+                      headers:
+                        - "Authorization: ApiKey yourEncodedApiKey"
+                      hosts:
+                        - https://yourCluster.us-central1.gcp.cloud.es.io:443
 
                   - id: sleep
                     type: io.kestra.plugin.core.flow.Sleep
@@ -128,20 +129,16 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                   - id: query
                     type: io.kestra.plugin.elasticsearch.Esql
                     fetchType: STORE
+                    connection:
+                      headers:
+                        - "Authorization: ApiKey yourEncodedApiKey"
+                      hosts:
+                        - https://yourCluster.us-central1.gcp.cloud.es.io:443
                     query: |
                       FROM books
                         | KEEP author, name, page_count, release_date
                         | SORT page_count DESC
                         | LIMIT 5
-
-                pluginDefaults:
-                  - type: io.kestra.plugin.elasticsearch
-                    values:
-                      connection:
-                        headers:
-                          - "Authorization: ApiKey yourEncodedApiKey"
-                        hosts:
-                          - https://yourCluster.us-central1.gcp.cloud.es.io:443
                 """
         )
     }
