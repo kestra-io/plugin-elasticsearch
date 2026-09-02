@@ -31,7 +31,7 @@ public abstract class AbstractSearch extends AbstractTask {
 
     @Schema(
         title = "Search request body",
-        description = "Elasticsearch search body as Map or JSON string; rendered before execution."
+        description = "Elasticsearch search body as Map or JSON string; rendered before execution. Required."
     )
     @PluginProperty(dynamic = true, group = "main")
     @NotNull

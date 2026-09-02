@@ -63,7 +63,7 @@ import lombok.experimental.SuperBuilder;
             title = "Put a document from a JSON string",
             full = true,
             code = """
-                id: elasticsearch_put
+                id: elasticsearch_put_json
                 namespace: company.team
 
                 inputs:
@@ -125,7 +125,7 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
 
     @Schema(
         title = "Value content type",
-        description = "Content type hint for `value`; default JSON."
+        description = "Content type for `value`. Only JSON is currently applied; this hint is not yet honored. Default JSON."
     )
     @Builder.Default
     @PluginProperty(group = "advanced")

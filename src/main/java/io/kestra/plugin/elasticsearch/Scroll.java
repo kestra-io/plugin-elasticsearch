@@ -34,7 +34,7 @@ import reactor.core.publisher.Mono;
 @NoArgsConstructor
 @Schema(
     title = "Scroll and store search results",
-    description = "Executes a search with a 60s scroll context and streams all hits to a Kestra internal storage file. Uses the provided request body and optional indices/routing from AbstractSearch."
+    description = "Executes a search with a 60s scroll context and streams all hits to a Kestra internal storage file. Uses the provided request body, with optional indices and routing."
 )
 @Plugin(
     metrics = {
@@ -160,7 +160,7 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
 
         @Schema(
             title = "Stored hits URI",
-            description = "Kestra internal storage path to the Ion file containing all hits."
+            description = "Kestra internal storage path to the ION file containing all hits."
         )
         private URI uri;
     }

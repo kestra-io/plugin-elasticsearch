@@ -34,7 +34,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @NoArgsConstructor
 @Schema(
     title = "Bulk load from Kestra storage",
-    description = "Reads newline-delimited documents from a Kestra internal storage file and indexes them in bulk. Uses the parent chunk size; set `removeIdKey` to keep or drop the id field after use."
+    description = "Reads ION-serialized records from a Kestra internal storage file and indexes them in bulk. Uses the parent chunk size; set `removeIdKey` to keep or drop the id field after use."
 )
 @Plugin(
     metrics = {
@@ -68,7 +68,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
 
     @Schema(
-        title = "The elasticsearch index"
+        title = "The Elasticsearch index"
     )
     @NotNull
     @PluginProperty(group = "main")
