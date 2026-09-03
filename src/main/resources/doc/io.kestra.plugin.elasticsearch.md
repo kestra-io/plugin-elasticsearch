@@ -8,7 +8,7 @@ Configure the cluster connection on each task via `connection.hosts` (a list of 
 
 ## Common properties
 
-Set `hosts` and any auth properties globally with [plugin defaults](https://kestra.io/docs/workflow-components/plugin-defaults) if all tasks in a flow target the same cluster.
+Set `hosts` and any auth properties on each task.
 
 ## Tasks
 
