@@ -9,6 +9,7 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.elasticsearch.model.HttpMethod;
+import io.kestra.plugin.elasticsearch.shared.ElasticsearchConnection;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;

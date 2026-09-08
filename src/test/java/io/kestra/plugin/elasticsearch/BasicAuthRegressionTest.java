@@ -17,6 +17,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContextFactory;
+import io.kestra.plugin.elasticsearch.shared.ElasticsearchConnection;
 
 import jakarta.inject.Inject;
 

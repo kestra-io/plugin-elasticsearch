@@ -3,7 +3,8 @@
 ## What
 
 - Provides plugin components under `io.kestra.plugin.elasticsearch`.
-- Includes classes such as `ElasticsearchConnection`, `Request`, `ElasticsearchService`, `Load`.
+- Includes classes such as `Request`, `ElasticsearchService`, `Load`.
+- The Elasticsearch connection (`ElasticsearchConnection`) and bulk-indexing logic (`BulkService`) are shared with the EE `plugin-ee-elasticsearch` plugin and live in `io.kestra.plugin.elasticsearch.shared`, published by `io.kestra.plugin:plugin-elasticsearch-lib`.
 
 ## Why
 
