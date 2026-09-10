@@ -20,6 +20,7 @@ import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.IdUtils;
+import io.kestra.plugin.elasticsearch.shared.ElasticsearchConnection;
 
 import jakarta.inject.Inject;
 

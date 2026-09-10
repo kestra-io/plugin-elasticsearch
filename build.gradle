@@ -57,9 +57,7 @@ dependencies {
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
 
     // Libs
-    api ("co.elastic.clients:elasticsearch-java:$elasticsearchVersion") {
-        exclude group: 'org.apache.httpcomponents.client5'
-    }
+    implementation 'io.kestra.plugin:plugin-elasticsearch-lib:1.0.0'
 }
 
 

@@ -13,6 +13,7 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.elasticsearch.model.RefreshPolicy;
+import io.kestra.plugin.elasticsearch.shared.ElasticsearchConnection;
 
 import jakarta.inject.Inject;
 

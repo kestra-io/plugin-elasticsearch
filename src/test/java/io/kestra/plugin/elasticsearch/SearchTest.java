@@ -14,6 +14,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.tenant.TenantService;
+import io.kestra.plugin.elasticsearch.shared.ElasticsearchConnection;
 
 import jakarta.inject.Inject;
 
