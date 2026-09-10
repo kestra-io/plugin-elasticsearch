@@ -57,7 +57,7 @@ dependencies {
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
 
     // Libs
-    implementation 'io.kestra.plugin:plugin-elasticsearch-lib:1.0.0-SNAPSHOT'
+    implementation 'io.kestra.plugin:plugin-elasticsearch-lib:1.0.0'
 }
 
 
