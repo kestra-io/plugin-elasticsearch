@@ -95,7 +95,7 @@ dependencies {
     testImplementation "org.hamcrest:hamcrest"
     testImplementation "org.hamcrest:hamcrest-library"
 
-    testImplementation 'org.testcontainers:elasticsearch:1.21.4'
+    testImplementation 'org.testcontainers:testcontainers-elasticsearch:2.0.5'
 }
 
 /**********************************************************************************************************************\
