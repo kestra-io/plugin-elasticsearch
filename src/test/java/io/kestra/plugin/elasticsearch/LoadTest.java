@@ -37,11 +37,11 @@ class LoadTest extends ElsContainer {
 
     @Test
     void run() throws Exception {
-        RunContext runContext = runContextFactory.of();
-        String indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+        var runContext = runContextFactory.of();
+        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
 
-        File tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
-        OutputStream output = new FileOutputStream(tempFile);
+        var tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
+        var output = new FileOutputStream(tempFile);
 
         for (int i = 0; i < 100; i++) {
             FileSerde.write(
@@ -51,9 +51,9 @@ class LoadTest extends ElsContainer {
                 )
             );
         }
-        URI uri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
+        var uri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
 
-        Load put = Load.builder()
+        var put = Load.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .index(Property.ofValue(indice))
             .from(uri.toString())
@@ -61,7 +61,7 @@ class LoadTest extends ElsContainer {
             .idKey(Property.ofValue("id"))
             .build();
 
-        Load.Output runOutput = put.run(runContext);
+        var runOutput = put.run(runContext);
 
         assertThat(runOutput.getSize(), is(100L));
         assertThat(runContext.metrics().stream().filter(e -> e.getName().equals("requests.count")).findFirst().orElseThrow().getValue(), is(10D));
@@ -70,10 +70,10 @@ class LoadTest extends ElsContainer {
 
     @Test
     void opTypes() throws Exception {
-        RunContext runContext = runContextFactory.of();
-        String indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+        var runContext = runContextFactory.of();
+        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
 
-        Load.Output created = load(
+        var created = load(
             runContext, indice, OpType.CREATE, List.of(
                 Map.of("id", "1", "name", "john", "city", "Paris"),
                 Map.of("id", "2", "name", "jane", "city", "Lyon")
@@ -87,7 +87,7 @@ class LoadTest extends ElsContainer {
                 Map.of("id", "1", "name", "johnny")
             )
         );
-        Map<String, Object> updated = get(runContext, indice, "1");
+        var updated = get(runContext, indice, "1");
         assertThat(updated.get("name"), is("johnny"));
         assertThat(updated.get("city"), is("Paris"));
 
@@ -100,17 +100,67 @@ class LoadTest extends ElsContainer {
     }
 
     @Test
-    void deleteWithoutIdKey_throws() throws Exception {
-        RunContext runContext = runContextFactory.of();
+    void indexOverwritesExistingDocument() throws Exception {
+        var runContext = runContextFactory.of();
+        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
 
-        Load load = Load.builder()
+        load(runContext, indice, OpType.INDEX, List.of(Map.of("id", "1", "name", "john", "city", "Paris")));
+        load(runContext, indice, OpType.INDEX, List.of(Map.of("id", "1", "name", "johnny")));
+
+        var document = get(runContext, indice, "1");
+        assertThat(document.get("name"), is("johnny"));
+        assertThat(document.get("city"), is(nullValue()));
+    }
+
+    @Test
+    void createOnExistingId_fails() throws Exception {
+        var runContext = runContextFactory.of();
+        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+
+        load(runContext, indice, OpType.CREATE, List.of(Map.of("id", "1", "name", "john")));
+
+        var e = assertThrows(
+            RuntimeException.class,
+            () -> load(runContext, indice, OpType.CREATE, List.of(Map.of("id", "1", "name", "johnny")))
+        );
+        assertThat(e.getMessage(), containsString("version conflict"));
+        assertThat(get(runContext, indice, "1").get("name"), is("john"));
+    }
+
+    @Test
+    void updateUpsertsMissingDocument() throws Exception {
+        var runContext = runContextFactory.of();
+        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+
+        load(runContext, indice, OpType.UPDATE, List.of(Map.of("id", "1", "name", "john")));
+
+        assertThat(get(runContext, indice, "1").get("name"), is("john"));
+    }
+
+    @Test
+    void recordWithoutIdKey_throws() {
+        var runContext = runContextFactory.of();
+        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+
+        var e = assertThrows(
+            IllegalArgumentException.class,
+            () -> load(runContext, indice, OpType.UPDATE, List.of(Map.of("name", "john")))
+        );
+        assertThat(e.getMessage(), containsString("Record is missing idKey 'id'"));
+    }
+
+    @Test
+    void deleteWithoutIdKey_throws() throws Exception {
+        var runContext = runContextFactory.of();
+
+        var load = Load.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .index(Property.ofValue("ut_" + IdUtils.create().toLowerCase(Locale.ROOT)))
             .from(upload(List.of(Map.of("id", "1"))).toString())
             .opType(Property.ofValue(OpType.DELETE))
             .build();
 
-        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> load.run(runContext));
+        var e = assertThrows(IllegalArgumentException.class, () -> load.run(runContext));
         assertThat(e.getMessage(), containsString("`idKey` is required"));
     }
 
@@ -136,9 +186,9 @@ class LoadTest extends ElsContainer {
     }
 
     private URI upload(List<Map<String, Object>> rows) throws Exception {
-        File tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
+        var tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
         try (OutputStream output = new FileOutputStream(tempFile)) {
-            for (Map<String, Object> row : rows) {
+            for (var row : rows) {
                 FileSerde.write(output, row);
             }
         }

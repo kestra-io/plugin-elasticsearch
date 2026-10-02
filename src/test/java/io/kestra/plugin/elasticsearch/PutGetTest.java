@@ -69,16 +69,16 @@ class PutGetTest extends ElsContainer {
 
     @Test
     void shouldRejectUnsupportedOpType() {
-        RunContext runContext = runContextFactory.of();
+        var runContext = runContextFactory.of();
 
-        Put put = Put.builder()
+        var put = Put.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .index(Property.ofValue("ut_" + IdUtils.create().toLowerCase(Locale.ROOT)))
             .opType(Property.ofValue(OpType.UPDATE))
             .value(Map.of("name", "John Doe"))
             .build();
 
-        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> put.run(runContext));
+        var e = assertThrows(IllegalArgumentException.class, () -> put.run(runContext));
         assertThat(e.getMessage(), containsString("opType UPDATE is not supported for a single-document request"));
     }
 
