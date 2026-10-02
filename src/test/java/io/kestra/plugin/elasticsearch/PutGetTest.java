@@ -79,7 +79,7 @@ class PutGetTest extends ElsContainer {
             .build();
 
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> put.run(runContext));
-        assertThat(e.getMessage(), containsString("Put only supports `opType` INDEX or CREATE"));
+        assertThat(e.getMessage(), containsString("opType UPDATE is not supported for a single-document request"));
     }
 
     @Test

@@ -125,7 +125,8 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
 
     @Schema(
         title = "Value content type",
-        description = "Deprecated and ignored: `value` must be a Map or a JSON string."
+        description = "Deprecated and ignored: `value` must be a Map or a JSON string.",
+        deprecated = true
     )
     @Builder.Default
     @PluginProperty(group = "advanced")
@@ -149,11 +150,7 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
             }
 
             if (this.opType != null) {
-                OpType opType = runContext.render(this.opType).as(OpType.class).orElseThrow();
-                if (opType != OpType.INDEX && opType != OpType.CREATE) {
-                    throw new IllegalArgumentException("Put only supports `opType` INDEX or CREATE, got " + opType + "; use Load or Bulk for UPDATE and DELETE");
-                }
-                request.opType(opType.to());
+                request.opType(runContext.render(this.opType).as(OpType.class).orElseThrow().to());
             }
 
             if (this.refreshPolicy != null) {

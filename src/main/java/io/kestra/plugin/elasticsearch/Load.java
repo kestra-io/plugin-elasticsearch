@@ -17,7 +17,12 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.elasticsearch.model.OpType;
 
-import co.elastic.clients.elasticsearch.core.bulk.*;
+import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import co.elastic.clients.elasticsearch.core.bulk.CreateOperation;
+import co.elastic.clients.elasticsearch.core.bulk.DeleteOperation;
+import co.elastic.clients.elasticsearch.core.bulk.IndexOperation;
+import co.elastic.clients.elasticsearch.core.bulk.UpdateAction;
+import co.elastic.clients.elasticsearch.core.bulk.UpdateOperation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -73,7 +78,10 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
 
     @Schema(
         title = "Operation type",
-        description = "Bulk operation applied to each record: `INDEX` (default), `CREATE`, `UPDATE` (partial update, upserting the record if missing), or `DELETE`. `UPDATE` and `DELETE` require `idKey`."
+        description = """
+            Bulk operation applied to each record: `INDEX` (default), `CREATE`, `UPDATE` (partial update, upserting the record if missing), or `DELETE`.
+            `CREATE` fails the task if a document with the same id already exists.
+            `UPDATE` and `DELETE` require `idKey`."""
     )
     @PluginProperty(group = "advanced")
     private Property<OpType> opType;
@@ -96,10 +104,11 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
     @SuppressWarnings("unchecked")
     @Override
     protected Flux<BulkOperation> source(RunContext runContext, InputStream inputStream) throws IllegalVariableEvaluationException, IOException {
-        String index = runContext.render(this.index).as(String.class).orElseThrow();
-        OpType opType = runContext.render(this.opType).as(OpType.class).orElse(OpType.INDEX);
-        String idKey = runContext.render(this.idKey).as(String.class).orElse(null);
-        boolean removeIdKey = runContext.render(this.removeIdKey).as(Boolean.class).orElse(true);
+        var index = runContext.render(this.index).as(String.class)
+            .orElseThrow(() -> new IllegalArgumentException("`index` is required"));
+        var opType = runContext.render(this.opType).as(OpType.class).orElse(OpType.INDEX);
+        var idKey = runContext.render(this.idKey).as(String.class).orElse(null);
+        var removeIdKey = runContext.render(this.removeIdKey).as(Boolean.class).orElse(true);
 
         if (idKey == null && (opType == OpType.UPDATE || opType == OpType.DELETE)) {
             throw new IllegalArgumentException("`idKey` is required when `opType` is " + opType);
@@ -108,11 +117,15 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
         return FileSerde.readAll(inputStream)
             .map(o ->
             {
-                Map<String, ?> values = (Map<String, ?>) o;
+                var values = (Map<String, ?>) o;
 
                 String id = null;
                 if (idKey != null) {
-                    id = values.get(idKey).toString();
+                    var idValue = values.get(idKey);
+                    if (idValue == null) {
+                        throw new IllegalArgumentException("Record is missing idKey '" + idKey + "'; required for opType " + opType);
+                    }
+                    id = idValue.toString();
 
                     if (removeIdKey) {
                         values.remove(idKey);
