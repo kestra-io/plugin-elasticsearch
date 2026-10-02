@@ -125,10 +125,12 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
 
     @Schema(
         title = "Value content type",
-        description = "Content type for `value`. Only JSON is currently applied; this hint is not yet honored. Default JSON."
+        description = "Deprecated and ignored: `value` must be a Map or a JSON string.",
+        deprecated = true
     )
     @Builder.Default
     @PluginProperty(group = "advanced")
+    @Deprecated
     private Property<XContentType> contentType = Property.ofValue(XContentType.JSON);
 
     @Override
@@ -175,7 +177,6 @@ public class Put extends AbstractTask implements RunnableTask<Put.Output> {
     private void source(RunContext runContext, IndexRequest.Builder<Map> request) throws IllegalVariableEvaluationException, JsonProcessingException {
         if (this.value instanceof String valueStr) {
             Map<?, ?> document = MAPPER.readValue(runContext.render(valueStr), Map.class);
-            // FIXME contentType
             request.document(document);
         } else if (this.value instanceof Map valueMap) {
             request.document(runContext.render(valueMap));

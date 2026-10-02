@@ -26,7 +26,9 @@ import jakarta.inject.Inject;
 
 import static io.kestra.core.utils.Rethrow.throwConsumer;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class BulkTest extends ElsContainer {
 
@@ -79,6 +81,42 @@ class BulkTest extends ElsContainer {
         assertThat(runOutput.getSize(), is(5L));
         assertThat(runContext.metrics().stream().filter(e -> e.getName().equals("requests.count")).findFirst().orElseThrow().getValue(), is(1D));
         assertThat(runContext.metrics().stream().filter(e -> e.getName().equals("records")).findFirst().orElseThrow().getValue(), is(5D));
+    }
+
+    @Test
+    void duplicateCreate_fails() throws Exception {
+        var runContext = runContextFactory.of();
+        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+
+        var tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
+        try (OutputStream output = new FileOutputStream(tempFile)) {
+            List.of(
+                Map.of("create", Map.of("_index", indice, "_id", "1")),
+                Map.of("field1", "value1"),
+                Map.of("create", Map.of("_index", indice, "_id", "1")),
+                Map.of("field1", "value2")
+            )
+                .forEach(
+                    throwConsumer(
+                        s -> output.write(
+                            (JacksonMapper
+                                .ofJson()
+                                .writeValueAsString(s) + "\n")
+                                .getBytes(StandardCharsets.UTF_8)
+                        )
+                    )
+                );
+        }
+
+        var uri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
+
+        var bulk = Bulk.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .from(uri.toString())
+            .build();
+
+        var e = assertThrows(RuntimeException.class, () -> bulk.run(runContext));
+        assertThat(e.getMessage(), containsString("version conflict"));
     }
 
     @Test
