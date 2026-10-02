@@ -10,9 +10,11 @@ import com.google.common.collect.ImmutableMap;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.IdUtils;
+import io.kestra.plugin.elasticsearch.model.OpType;
 import io.kestra.plugin.elasticsearch.shared.ElasticsearchConnection;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -63,6 +65,21 @@ class PutGetTest extends ElsContainer {
         runOutput = task.run(runContext);
 
         assertThat(runOutput.getRow().get("name"), is("Jane Doe"));
+    }
+
+    @Test
+    void shouldRejectUnsupportedOpType() {
+        RunContext runContext = runContextFactory.of();
+
+        Put put = Put.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .index(Property.ofValue("ut_" + IdUtils.create().toLowerCase(Locale.ROOT)))
+            .opType(Property.ofValue(OpType.UPDATE))
+            .value(Map.of("name", "John Doe"))
+            .build();
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> put.run(runContext));
+        assertThat(e.getMessage(), containsString("Put only supports `opType` INDEX or CREATE"));
     }
 
     @Test

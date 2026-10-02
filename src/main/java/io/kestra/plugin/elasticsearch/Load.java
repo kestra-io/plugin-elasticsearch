@@ -17,15 +17,12 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.elasticsearch.model.OpType;
 
-import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
-import co.elastic.clients.elasticsearch.core.bulk.IndexOperation;
+import co.elastic.clients.elasticsearch.core.bulk.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import reactor.core.publisher.Flux;
-
-import static io.kestra.core.utils.Rethrow.throwFunction;
 
 @SuperBuilder
 @ToString
@@ -76,7 +73,7 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
 
     @Schema(
         title = "Operation type",
-        description = "Intended bulk op type; currently only index is applied."
+        description = "Bulk operation applied to each record: `INDEX` (default), `CREATE`, `UPDATE` (partial update, upserting the record if missing), or `DELETE`. `UPDATE` and `DELETE` require `idKey`."
     )
     @PluginProperty(group = "advanced")
     private Property<OpType> opType;
@@ -99,36 +96,71 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
     @SuppressWarnings("unchecked")
     @Override
     protected Flux<BulkOperation> source(RunContext runContext, InputStream inputStream) throws IllegalVariableEvaluationException, IOException {
+        String index = runContext.render(this.index).as(String.class).orElseThrow();
+        OpType opType = runContext.render(this.opType).as(OpType.class).orElse(OpType.INDEX);
+        String idKey = runContext.render(this.idKey).as(String.class).orElse(null);
+        boolean removeIdKey = runContext.render(this.removeIdKey).as(Boolean.class).orElse(true);
+
+        if (idKey == null && (opType == OpType.UPDATE || opType == OpType.DELETE)) {
+            throw new IllegalArgumentException("`idKey` is required when `opType` is " + opType);
+        }
+
         return FileSerde.readAll(inputStream)
-            .map(throwFunction(o ->
+            .map(o ->
             {
                 Map<String, ?> values = (Map<String, ?>) o;
 
-                var indexRequest = new IndexOperation.Builder<Map<String, ?>>();
-                if (this.index != null) {
-                    indexRequest.index(runContext.render(this.getIndex()).as(String.class).orElseThrow());
-                }
+                String id = null;
+                if (idKey != null) {
+                    id = values.get(idKey).toString();
 
-                //FIXME
-                //                if (this.opType != null) {
-                //                    indexRequest.opType(this.opType.to());
-                //                }
-
-                if (this.idKey != null) {
-                    String idKey = runContext.render(this.idKey).as(String.class).orElseThrow();
-
-                    indexRequest.id(values.get(idKey).toString());
-
-                    if (runContext.render(this.removeIdKey).as(Boolean.class).orElse(true)) {
+                    if (removeIdKey) {
                         values.remove(idKey);
                     }
                 }
 
-                indexRequest.document(values);
+                return operation(opType, index, id, values);
+            });
+    }
 
-                var bulkOperation = new BulkOperation.Builder();
-                bulkOperation.index(indexRequest.build());
-                return bulkOperation.build();
-            }));
+    private static BulkOperation operation(OpType opType, String index, String id, Map<String, ?> values) {
+        var bulkOperation = new BulkOperation.Builder();
+
+        switch (opType) {
+            case INDEX -> bulkOperation.index(
+                new IndexOperation.Builder<Map<String, ?>>()
+                    .index(index)
+                    .id(id)
+                    .document(values)
+                    .build()
+            );
+            case CREATE -> bulkOperation.create(
+                new CreateOperation.Builder<Map<String, ?>>()
+                    .index(index)
+                    .id(id)
+                    .document(values)
+                    .build()
+            );
+            case UPDATE -> bulkOperation.update(
+                new UpdateOperation.Builder<Map<String, ?>, Map<String, ?>>()
+                    .index(index)
+                    .id(id)
+                    .action(
+                        new UpdateAction.Builder<Map<String, ?>, Map<String, ?>>()
+                            .docAsUpsert(true)
+                            .doc(values)
+                            .build()
+                    )
+                    .build()
+            );
+            case DELETE -> bulkOperation.delete(
+                new DeleteOperation.Builder()
+                    .index(index)
+                    .id(id)
+                    .build()
+            );
+        }
+
+        return bulkOperation.build();
     }
 }

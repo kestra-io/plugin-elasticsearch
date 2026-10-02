@@ -120,7 +120,6 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                         var createOperation = new CreateOperation.Builder<>()
                             .id((String) value.get("_id"))
                             .index((String) value.get("_index"))
-                            .ifPrimaryTerm(0L) //FIXME opType
                             .document(parseline(isJson, input.readLine()));
                         bulkOperation.create(createOperation.build());
                         break;
