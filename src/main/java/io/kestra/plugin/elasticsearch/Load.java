@@ -36,7 +36,7 @@ import reactor.core.publisher.Flux;
 @NoArgsConstructor
 @Schema(
     title = "Bulk load from Kestra storage",
-    description = "Reads ION-serialized records from a Kestra internal storage file and indexes them in bulk. Uses the parent chunk size; set `removeIdKey` to keep or drop the id field after use."
+    description = "Reads ION-serialized records from a Kestra internal storage file and sends them in bulk as `INDEX`, `CREATE`, `UPDATE` or `DELETE` operations, depending on `opType`. Uses the parent chunk size; set `removeIdKey` to keep or drop the id field after use."
 )
 @Plugin(
     metrics = {
@@ -64,6 +64,28 @@ import reactor.core.publisher.Flux;
                     from: "{{ inputs.file }}"
                     index: "my_index"
                 """
+        ),
+        @Example(
+            full = true,
+            code = """
+                id: elasticsearch_load_update
+                namespace: company.team
+
+                inputs:
+                  - id: file
+                    type: FILE
+
+                tasks:
+                  - id: update
+                    type: io.kestra.plugin.elasticsearch.Load
+                    connection:
+                      hosts:
+                       - "http://localhost:9200"
+                    from: "{{ inputs.file }}"
+                    index: "my_index"
+                    idKey: "id"
+                    opType: UPDATE
+                """
         )
     }
 )
@@ -81,14 +103,15 @@ public class Load extends AbstractLoad implements RunnableTask<Load.Output> {
         description = """
             Bulk operation applied to each record: `INDEX` (default), `CREATE`, `UPDATE` (partial update, upserting the record if missing), or `DELETE`.
             `CREATE` fails the task if a document with the same id already exists.
-            `UPDATE` and `DELETE` require `idKey`."""
+            `UPDATE` and `DELETE` require `idKey`.
+            The load is not atomic: records are validated while streaming, so a failure on a bad record (e.g. a missing `idKey` field) can leave earlier chunks already applied."""
     )
     @PluginProperty(group = "advanced")
     private Property<OpType> opType;
 
     @Schema(
         title = "Field used as document id",
-        description = "Name of the field to use as `_id`; required when assigning ids from input rows."
+        description = "Name of the field to use as `_id`. Required when `opType` is `UPDATE` or `DELETE`; optional otherwise (Elasticsearch generates ids when unset)."
     )
     @PluginProperty(group = "connection")
     private Property<String> idKey;
