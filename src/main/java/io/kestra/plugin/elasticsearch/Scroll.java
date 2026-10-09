@@ -5,6 +5,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 
@@ -88,36 +89,47 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
             AtomicLong requestsCount = new AtomicLong();
             AtomicLong requestsDuration = new AtomicLong();
 
-            String scrollId = null;
+            AtomicReference<String> scrollId = new AtomicReference<>();
 
             try {
                 SearchResponse<Map> searchResponse = client.search(request.build(), Map.class);
-                HitsMetadata<Map> hits = searchResponse.hits();
-                long took = searchResponse.took();
-                scrollId = searchResponse.scrollId();
+                scrollId.set(searchResponse.scrollId());
+                requestsDuration.addAndGet(searchResponse.took());
+                requestsCount.incrementAndGet();
 
-                do {
-                    requestsDuration.addAndGet(took);
-                    requestsCount.incrementAndGet();
+                // One serialization lifecycle for all pages: writeAll closes its output stream.
+                Flux<Map> hitFlux = Flux.just(searchResponse.hits())
+                    .expand(hits ->
+                    {
+                        if (hits.hits().isEmpty()) {
+                            return Mono.empty();
+                        }
 
-                    Flux<Map> hitFlux = Flux.fromIterable(hits.hits()).map(hit -> hit.source());
-                    Mono<Long> longMono = FileSerde.writeAll(output, hitFlux);
+                        return Mono.fromCallable(() ->
+                        {
+                            ScrollResponse<Map> response = client.scroll(
+                                new ScrollRequest.Builder()
+                                    .scrollId(scrollId.get())
+                                    .scroll(new Time.Builder().time("60s").build())
+                                    .build(),
+                                Map.class
+                            );
+                            scrollId.set(response.scrollId());
+                            if (!response.hits().hits().isEmpty()) {
+                                requestsDuration.addAndGet(response.took());
+                                requestsCount.incrementAndGet();
+                            }
+                            return response.hits();
+                        });
+                    }, 1)
+                    .concatMapIterable(HitsMetadata::hits, 1)
+                    .map(hit -> hit.source());
 
-                    recordsCount.addAndGet(longMono.blockOptional().orElse(0L));
-
-                    ScrollRequest searchScrollRequest = new ScrollRequest.Builder()
-                        .scrollId(scrollId)
-                        .scroll(new Time.Builder().time("60s").build())
-                        .build();
-
-                    ScrollResponse<Map> scrollResponse = client.scroll(searchScrollRequest, Map.class);
-                    hits = scrollResponse.hits();
-                    took = scrollResponse.took();
-                } while (!hits.hits().isEmpty());
+                recordsCount.set(FileSerde.writeAll(output, hitFlux).blockOptional().orElse(0L));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             } finally {
-                this.clearScrollId(logger, client, scrollId);
+                this.clearScrollId(logger, client, scrollId.get());
             }
 
             // metrics
@@ -144,7 +156,7 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
 
         try {
             client.clearScroll(clearScrollRequest);
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             logger.warn("Failed to clear scroll", e);
         }
     }
