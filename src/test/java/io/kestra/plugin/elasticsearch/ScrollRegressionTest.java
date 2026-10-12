@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -91,7 +92,7 @@ class ScrollRegressionTest {
         List<String> names = index < pages.size() ? pages.get(index) : List.of();
         String hits = names.stream()
             .map(name -> "{\"_index\":\"test\",\"_id\":\"" + name + "\",\"_source\":{\"name\":\"" + name + "\"}}")
-            .collect(java.util.stream.Collectors.joining(","));
+            .collect(Collectors.joining(","));
         return "{\"_scroll_id\":\"scroll-" + index + "\",\"took\":1,\"timed_out\":false," +
             "\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"hits\":[" + hits + "]}}";
     }

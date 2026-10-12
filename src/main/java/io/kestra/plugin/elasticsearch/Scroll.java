@@ -89,7 +89,7 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
             AtomicLong requestsCount = new AtomicLong();
             AtomicLong requestsDuration = new AtomicLong();
 
-            AtomicReference<String> scrollId = new AtomicReference<>();
+            var scrollId = new AtomicReference<String>();
 
             try {
                 SearchResponse<Map> searchResponse = client.search(request.build(), Map.class);
@@ -107,7 +107,7 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
 
                         return Mono.fromCallable(() ->
                         {
-                            ScrollResponse<Map> response = client.scroll(
+                            var response = client.scroll(
                                 new ScrollRequest.Builder()
                                     .scrollId(scrollId.get())
                                     .scroll(new Time.Builder().time("60s").build())
