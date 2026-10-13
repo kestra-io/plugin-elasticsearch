@@ -88,13 +88,16 @@ public class ElsContainer {
             throw new RuntimeException("Failed to execute bulk request: " + response.body());
         }
 
-        client.send(
+        HttpResponse<String> refreshResponse = client.send(
             HttpRequest.newBuilder()
-                .uri(URI.create("http://" + elasticsearchContainer.getHttpHostAddress() + "/gbit/_refresh"))
+                .uri(URI.create("http://" + elasticsearchContainer.getHttpHostAddress() + "/gbif/_refresh"))
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .header("Content-Type", "application/json")
                 .build(),
             BodyHandlers.ofString()
         );
+        if (refreshResponse.statusCode() != 200) {
+            throw new RuntimeException("Failed to refresh test index: " + refreshResponse.body());
+        }
     }
 }
