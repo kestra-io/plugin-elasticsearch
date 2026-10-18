@@ -71,6 +71,63 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
                           name:
                             value: 'john'
                 """
+        ),
+        @Example(
+            title = "Semantic search using a semantic_text field and API key authentication",
+            full = true,
+            code = """
+                id: elasticsearch_semantic_search
+                namespace: company.team
+
+                tasks:
+                  - id: semantic_search
+                    type: io.kestra.plugin.elasticsearch.Search
+                    connection:
+                      hosts:
+                        - "https://my-elasticsearch-cluster.es.io:9243"
+                      headers:
+                        Authorization: "ApiKey {{ secret('ES_API_KEY') }}"
+                    indexes:
+                      - "articles"
+                    request:
+                      query:
+                        semantic:
+                          field: "inference_field"
+                          query: "how to orchestrate workflows with event-driven triggers"
+                """
+        ),
+        @Example(
+            title = "Hybrid search combining standard keyword search and kNN vector search with an RRF retriever",
+            full = true,
+            code = """
+                id: elasticsearch_hybrid_search
+                namespace: company.team
+
+                tasks:
+                  - id: hybrid_search
+                    type: io.kestra.plugin.elasticsearch.Search
+                    connection:
+                      hosts:
+                        - "https://my-elasticsearch-cluster.es.io:9243"
+                      headers:
+                        Authorization: "ApiKey {{ secret('ES_API_KEY') }}"
+                    indexes:
+                      - "knowledge_base"
+                    request:
+                      retriever:
+                        rrf:
+                          retrievers:
+                            - standard:
+                                query:
+                                  match:
+                                    content: "distributed systems fault tolerance"
+                            - knn:
+                                field: "content_vector"
+                                query_vector: [0.12, -0.45, 0.88, 0.03]
+                                k: 10
+                                num_candidates: 50
+                          rank_window_size: 20
+                """
         )
     }
 )
