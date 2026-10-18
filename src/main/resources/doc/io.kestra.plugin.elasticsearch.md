@@ -17,3 +17,8 @@ Set `hosts` and any auth properties on each task.
 For writes, `Put` indexes or replaces a single document by ID. `Bulk` replays an Elasticsearch bulk-format file (NDJSON or ION) from Kestra internal storage, applying its index/create/update/delete operations in batched requests — use it to replay a prepared bulk payload. `Load` reads ION records from a Kestra internal storage file and bulk-indexes them (index operations only), making it the natural follow-on after a download or transform step.
 
 `Get` retrieves a single document by ID. `Request` sends a raw HTTP request to any Elasticsearch REST API endpoint — use it for operations not covered by a dedicated task.
+
+
+## Vector and Hybrid Search
+
+The `Search` and `Request` tasks support vector search, semantic queries (using `semantic_text` fields), and hybrid search using reciprocal rank fusion (`rrf` retrievers). For details on query syntax and supported models, refer to the [Elasticsearch Vector Search documentation](https://www.elastic.co/docs/solutions/search/vector).
