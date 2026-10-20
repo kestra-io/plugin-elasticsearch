@@ -4,7 +4,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import com.fasterxml.jackson.core.JacksonException;
@@ -39,7 +41,12 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @NoArgsConstructor
 @Schema(
     title = "Replay Elasticsearch bulk file",
-    description = "Reads an Elasticsearch bulk file (NDJSON or ION) from Kestra storage and replays operations. Follows the bulk file contract; see Elasticsearch bulk API docs for format."
+    description = """
+        Reads an Elasticsearch bulk file (NDJSON or ION) from Kestra storage and replays operations. Follows the bulk file contract; see Elasticsearch bulk API docs for format.
+        Update bodies that contain native update fields (doc, script, upsert, doc_as_upsert, scripted_upsert, detect_noop or _source) are applied with Elasticsearch bulk API semantics, so upserts only happen when the body asks for them.
+        For compatibility, update bodies without any native update field are treated as plain partial documents with doc_as_upsert enabled.
+        A plain partial document that itself has source fields named like native update fields is ambiguous: wrap it in a doc field, or use the Load task with opType UPDATE instead.
+        """
 )
 @Plugin(
     metrics = {
@@ -71,6 +78,11 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 )
 public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
     private static final ObjectMapper OBJECT_MAPPER = JacksonMapper.ofJson();
+
+    /** Fields that mark an update body as a native Elasticsearch update request. */
+    private static final Set<String> UPDATE_FIELDS = Set.of(
+        "doc", "script", "upsert", "doc_as_upsert", "scripted_upsert", "detect_noop", "_source"
+    );
 
     @Override
     protected Flux<BulkOperation> source(RunContext runContext, InputStream inputStream) throws IOException {
@@ -127,12 +139,7 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                         var updateOperation = new UpdateOperation.Builder<>()
                             .id((String) value.get("_id"))
                             .index((String) value.get("_index"))
-                            .action(
-                                new UpdateAction.Builder<>()
-                                    .docAsUpsert(true)
-                                    .doc(parseline(isJson, input.readLine()))
-                                    .build()
-                            );
+                            .action(updateAction(parseline(isJson, input.readLine())));
                         bulkOperation.update(updateOperation.build());
                         break;
                     case "delete":
@@ -150,6 +157,28 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
 
             s.complete();
         });
+    }
+
+    /**
+     * Build the update action for one bulk update body.
+     *
+     * A body carrying any native update field is decoded as an {@link UpdateAction}
+     * so doc, script and the explicit upsert options are honored, and a missing
+     * document is not created unless the body says so. A body without any native
+     * field keeps the historical behavior: the whole body is a plain partial
+     * document applied as an upsert.
+     */
+    static UpdateAction<Object, Object> updateAction(Map<?, ?> body) throws JsonProcessingException {
+        if (body.keySet().stream().anyMatch(UPDATE_FIELDS::contains)) {
+            return new UpdateAction.Builder<>()
+                .withJson(new StringReader(OBJECT_MAPPER.writeValueAsString(body)))
+                .build();
+        }
+
+        return new UpdateAction.Builder<>()
+            .doc(body)
+            .docAsUpsert(true)
+            .build();
     }
 
     private static Map<?, ?> parseline(Boolean isJson, String line) throws JsonProcessingException {
