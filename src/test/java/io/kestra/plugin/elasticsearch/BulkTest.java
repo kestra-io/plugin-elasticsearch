@@ -42,7 +42,7 @@ class BulkTest extends ElsContainer {
         Map.of("create", Map.of("_index", indice, "_id", "3")),
         Map.of("field1", "value3"),
         Map.of("update", Map.of("_index", indice, "_id", "1")),
-        Map.of("doc", Map.of("field2", "value2")),
+        Map.of("doc", Map.of("field2", "value2"), "doc_as_upsert", true),
         Map.of("create", Map.of("_index", indice)),
         Map.of("field1", "value4")
     );
