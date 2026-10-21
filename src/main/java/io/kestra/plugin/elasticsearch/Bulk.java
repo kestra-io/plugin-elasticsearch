@@ -23,6 +23,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 
 import co.elastic.clients.elasticsearch.core.bulk.*;
+import co.elastic.clients.json.JsonpMappingException;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -79,7 +80,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
     private static final ObjectMapper OBJECT_MAPPER = JacksonMapper.ofJson();
 
-    /** Fields that mark an update body as a native Elasticsearch update request. */
+    // fields that mark an update body as a native Elasticsearch update request
     private static final Set<String> UPDATE_FIELDS = Set.of(
         "doc", "script", "upsert", "doc_as_upsert", "scripted_upsert", "detect_noop", "_source"
     );
@@ -136,10 +137,11 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                         bulkOperation.create(createOperation.build());
                         break;
                     case "update":
+                        String updateLine = input.readLine();
                         var updateOperation = new UpdateOperation.Builder<>()
                             .id((String) value.get("_id"))
                             .index((String) value.get("_index"))
-                            .action(updateAction(parseline(isJson, input.readLine())));
+                            .action(updateAction((String) value.get("_id"), isJson, updateLine, parseline(isJson, updateLine)));
                         bulkOperation.update(updateOperation.build());
                         break;
                     case "delete":
@@ -159,20 +161,20 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
         });
     }
 
-    /**
-     * Build the update action for one bulk update body.
-     *
-     * A body carrying any native update field is decoded as an {@link UpdateAction}
-     * so doc, script and the explicit upsert options are honored, and a missing
-     * document is not created unless the body says so. A body without any native
-     * field keeps the historical behavior: the whole body is a plain partial
-     * document applied as an upsert.
-     */
-    static UpdateAction<Object, Object> updateAction(Map<?, ?> body) throws JsonProcessingException {
+    // legacy: bodies without native update fields are upserted as plain documents
+    static UpdateAction<Object, Object> updateAction(String id, Boolean isJson, String line, Map<?, ?> body) throws JsonProcessingException {
         if (body.keySet().stream().anyMatch(UPDATE_FIELDS::contains)) {
-            return new UpdateAction.Builder<>()
-                .withJson(new StringReader(OBJECT_MAPPER.writeValueAsString(body)))
-                .build();
+            try {
+                return new UpdateAction.Builder<>()
+                    .withJson(new StringReader(isJson ? line : OBJECT_MAPPER.writeValueAsString(body)))
+                    .build();
+            } catch (JsonpMappingException e) {
+                throw new IllegalArgumentException(
+                    "Update body for _id '" + id + "' mixes native update fields with document fields: " +
+                        "wrap the document in 'doc', or use the Load task with opType UPDATE for plain records",
+                    e
+                );
+            }
         }
 
         return new UpdateAction.Builder<>()
