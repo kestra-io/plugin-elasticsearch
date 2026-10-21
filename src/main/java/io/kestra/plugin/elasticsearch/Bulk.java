@@ -137,7 +137,7 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                         bulkOperation.create(createOperation.build());
                         break;
                     case "update":
-                        String updateLine = input.readLine();
+                        var updateLine = input.readLine();
                         var updateOperation = new UpdateOperation.Builder<>()
                             .id((String) value.get("_id"))
                             .index((String) value.get("_index"))
