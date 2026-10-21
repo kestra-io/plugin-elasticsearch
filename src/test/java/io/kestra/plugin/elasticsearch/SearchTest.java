@@ -21,6 +21,7 @@ import jakarta.inject.Inject;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 class SearchTest extends ElsContainer {
 
@@ -76,6 +77,31 @@ class SearchTest extends ElsContainer {
         assertThat(run.getSize(), is(1));
         assertThat(run.getTotal(), is(28L));
         assertThat(run.getRow().get("key"), is(925277090));
+    }
+
+    @Test
+    void runWithoutTotalHits() throws Exception {
+        RunContext runContext = runContextFactory.of();
+
+        Search task = Search.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .indexes(Property.ofValue(Collections.singletonList("gbif")))
+            .request("""
+                {
+                    "track_total_hits": false,
+                    "query": {
+                        "term": {
+                            "publishingCountry.keyword": "BE"
+                        }
+                    }
+                }""")
+            .build();
+
+        Search.Output run = task.run(runContext);
+
+        assertThat(run.getSize(), is(10));
+        assertThat(run.getRows().size(), is(10));
+        assertThat(run.getTotal(), nullValue());
     }
 
     @SuppressWarnings("unchecked")

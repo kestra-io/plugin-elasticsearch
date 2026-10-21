@@ -177,7 +177,9 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
 
         @Schema(
             title = "Total hits reported",
-            description = "Total hits reported by Elasticsearch, regardless of pagination. This is null when Elasticsearch omits the total, such as when `track_total_hits=false`."
+            description = """
+                Total hits reported by Elasticsearch, regardless of pagination.
+                This is null when Elasticsearch omits the total, such as when `track_total_hits=false`."""
         )
         private Long total;
 
