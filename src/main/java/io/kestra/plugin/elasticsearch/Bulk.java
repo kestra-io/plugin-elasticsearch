@@ -4,7 +4,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import com.fasterxml.jackson.core.JacksonException;
@@ -21,6 +23,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 
 import co.elastic.clients.elasticsearch.core.bulk.*;
+import co.elastic.clients.json.JsonpMappingException;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -39,7 +42,12 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 @NoArgsConstructor
 @Schema(
     title = "Replay Elasticsearch bulk file",
-    description = "Reads an Elasticsearch bulk file (NDJSON or ION) from Kestra storage and replays operations. Follows the bulk file contract; see Elasticsearch bulk API docs for format."
+    description = """
+        Reads an Elasticsearch bulk file (NDJSON or ION) from Kestra storage and replays operations. Follows the bulk file contract; see Elasticsearch bulk API docs for format.
+        Update bodies that contain native update fields (doc, script, upsert, doc_as_upsert, scripted_upsert, detect_noop or _source) are applied with Elasticsearch bulk API semantics, so upserts only happen when the body asks for them.
+        For compatibility, update bodies without any native update field are treated as plain partial documents with doc_as_upsert enabled.
+        A plain partial document that itself has source fields named like native update fields is ambiguous: wrap it in a doc field, or use the Load task with opType UPDATE instead.
+        """
 )
 @Plugin(
     metrics = {
@@ -71,6 +79,11 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
 )
 public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
     private static final ObjectMapper OBJECT_MAPPER = JacksonMapper.ofJson();
+
+    // fields that mark an update body as a native Elasticsearch update request
+    private static final Set<String> UPDATE_FIELDS = Set.of(
+        "doc", "script", "upsert", "doc_as_upsert", "scripted_upsert", "detect_noop", "_source"
+    );
 
     @Override
     protected Flux<BulkOperation> source(RunContext runContext, InputStream inputStream) throws IOException {
@@ -124,15 +137,11 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                         bulkOperation.create(createOperation.build());
                         break;
                     case "update":
+                        var updateLine = input.readLine();
                         var updateOperation = new UpdateOperation.Builder<>()
                             .id((String) value.get("_id"))
                             .index((String) value.get("_index"))
-                            .action(
-                                new UpdateAction.Builder<>()
-                                    .docAsUpsert(true)
-                                    .doc(parseline(isJson, input.readLine()))
-                                    .build()
-                            );
+                            .action(updateAction((String) value.get("_id"), isJson, updateLine, parseline(isJson, updateLine)));
                         bulkOperation.update(updateOperation.build());
                         break;
                     case "delete":
@@ -150,6 +159,28 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
 
             s.complete();
         });
+    }
+
+    // legacy: bodies without native update fields are upserted as plain documents
+    static UpdateAction<Object, Object> updateAction(String id, Boolean isJson, String line, Map<?, ?> body) throws JsonProcessingException {
+        if (body.keySet().stream().anyMatch(UPDATE_FIELDS::contains)) {
+            try {
+                return new UpdateAction.Builder<>()
+                    .withJson(new StringReader(isJson ? line : OBJECT_MAPPER.writeValueAsString(body)))
+                    .build();
+            } catch (JsonpMappingException e) {
+                throw new IllegalArgumentException(
+                    "Update body for _id '" + id + "' mixes native update fields with document fields: " +
+                        "wrap the document in 'doc', or use the Load task with opType UPDATE for plain records",
+                    e
+                );
+            }
+        }
+
+        return new UpdateAction.Builder<>()
+            .doc(body)
+            .docAsUpsert(true)
+            .build();
     }
 
     private static Map<?, ?> parseline(Boolean isJson, String line) throws JsonProcessingException {
