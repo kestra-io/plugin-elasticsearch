@@ -15,6 +15,7 @@ import reactor.core.publisher.FluxSink;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 // Reader-level tests for Bulk action metadata: no cluster needed, fileReader only builds operations.
 class BulkMetadataReaderTest {
@@ -90,5 +91,17 @@ class BulkMetadataReaderTest {
         assertThat(index.ifSeqNo(), nullValue());
         assertThat(index.routing(), nullValue());
         assertThat(index.versionType(), nullValue());
+    }
+
+    @Test
+    void unknownVersionTypeIsRejected() {
+        // "force" is not a version type in the Elasticsearch 8.x Java client; it must fail
+        // fast with a named message rather than pass through as an unmapped value.
+        var e = assertThrows(IllegalArgumentException.class, () -> read("""
+            {"index":{"_index":"bulk_guard","_id":"1","version_type":"force"}}
+            {"status":"fresh"}
+            """));
+
+        assertThat(e.getMessage(), is("Invalid version_type 'force' in bulk action line"));
     }
 }

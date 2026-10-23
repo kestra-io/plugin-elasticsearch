@@ -209,7 +209,6 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
             case "internal" -> VersionType.Internal;
             case "external" -> VersionType.External;
             case "external_gte" -> VersionType.ExternalGte;
-            case "force" -> VersionType.Force;
             default -> throw new IllegalArgumentException("Invalid version_type '" + raw + "' in bulk action line");
         };
     }
