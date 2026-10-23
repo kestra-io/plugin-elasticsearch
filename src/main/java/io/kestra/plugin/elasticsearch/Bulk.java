@@ -5,12 +5,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.kestra.core.models.annotations.Example;
@@ -45,7 +49,10 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
     title = "Replay Elasticsearch bulk file",
     description = """
         Reads an Elasticsearch bulk file (NDJSON or ION) from Kestra storage and replays operations. Follows the bulk file contract; see Elasticsearch bulk API docs for format.
-        Action-line metadata (routing, if_seq_no, if_primary_term, version, version_type, pipeline, require_alias, retry_on_conflict, dynamic_templates) is carried onto each operation, so conditional writes keep their optimistic-concurrency checks instead of silently becoming unconditional.
+        Action-line metadata is carried onto each operation so the replay honors the file's concurrency and routing
+        intents: routing, if_seq_no, if_primary_term, version and version_type apply to every op; pipeline and
+        dynamic_templates apply to index and create; require_alias applies to index, create and update;
+        retry_on_conflict applies to update.
         Update bodies that contain native update fields (doc, script, upsert, doc_as_upsert, scripted_upsert, detect_noop or _source) are applied with Elasticsearch bulk API semantics, so upserts only happen when the body asks for them.
         For compatibility, update bodies without any native update field are treated as plain partial documents with doc_as_upsert enabled.
         A plain partial document that itself has source fields named like native update fields is ambiguous: wrap it in a doc field, or use the Load task with opType UPDATE instead.
@@ -138,8 +145,8 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                         var updateLine = input.readLine();
                         var updateOperation = metadata(new UpdateOperation.Builder<>(), value)
                             .retryOnConflict(OBJECT_MAPPER.convertValue(value.get("retry_on_conflict"), Integer.class))
-                            .requireAlias((Boolean) value.get("require_alias"))
-                            .action(updateAction((String) value.get("_id"), isJson, updateLine, parseline(isJson, updateLine)));
+                            .requireAlias(OBJECT_MAPPER.convertValue(value.get("require_alias"), Boolean.class))
+                            .action(updateAction(OBJECT_MAPPER.convertValue(value.get("_id"), String.class), isJson, updateLine, parseline(isJson, updateLine)));
                         bulkOperation.update(updateOperation.build());
                         break;
                     case "delete":
@@ -181,22 +188,25 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
 
     private static <T extends BulkOperationBase.AbstractBuilder<T>> T metadata(T builder, Map<String, Object> value) {
         return builder
-            .id((String) value.get("_id"))
-            .index((String) value.get("_index"))
-            .routing((String) value.get("routing"))
+            .id(OBJECT_MAPPER.convertValue(value.get("_id"), String.class))
+            .index(OBJECT_MAPPER.convertValue(value.get("_index"), String.class))
+            .routing(OBJECT_MAPPER.convertValue(value.get("routing"), String.class))
             .ifSeqNo(OBJECT_MAPPER.convertValue(value.get("if_seq_no"), Long.class))
             .ifPrimaryTerm(OBJECT_MAPPER.convertValue(value.get("if_primary_term"), Long.class))
             .version(OBJECT_MAPPER.convertValue(value.get("version"), Long.class))
             .versionType(versionType(value.get("version_type")));
     }
 
-    @SuppressWarnings("unchecked")
     private static <T extends WriteOperation.AbstractBuilder<T>> T writeMetadata(T builder, Map<String, Object> value) {
         metadata(builder, value)
-            .pipeline((String) value.get("pipeline"))
-            .requireAlias((Boolean) value.get("require_alias"));
+            .pipeline(OBJECT_MAPPER.convertValue(value.get("pipeline"), String.class))
+            .requireAlias(OBJECT_MAPPER.convertValue(value.get("require_alias"), Boolean.class));
         if (value.get("dynamic_templates") != null) {
-            builder.dynamicTemplates((Map<String, String>) value.get("dynamic_templates"));
+            Map<String, String> dynamicTemplates = OBJECT_MAPPER.convertValue(
+                value.get("dynamic_templates"),
+                new TypeReference<Map<String, String>>() {}
+            );
+            builder.dynamicTemplates(dynamicTemplates);
         }
         return builder;
     }
@@ -205,12 +215,19 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
         if (raw == null) {
             return null;
         }
-        return switch (((String) raw).toLowerCase()) {
-            case "internal" -> VersionType.Internal;
-            case "external" -> VersionType.External;
-            case "external_gte" -> VersionType.ExternalGte;
-            default -> throw new IllegalArgumentException("Invalid version_type '" + raw + "' in bulk action line");
-        };
+        String value = OBJECT_MAPPER.convertValue(raw, String.class);
+        try {
+            return VersionType._DESERIALIZER.parse(value);
+        } catch (NoSuchElementException e) {
+            throw new IllegalArgumentException(
+                "Invalid version_type '" + value + "': expected one of " + allowedVersionTypes(),
+                e
+            );
+        }
+    }
+
+    private static String allowedVersionTypes() {
+        return Arrays.stream(VersionType.values()).map(VersionType::jsonValue).collect(Collectors.joining(", "));
     }
 
     private static Map<?, ?> parseline(Boolean isJson, String line) throws JsonProcessingException {
