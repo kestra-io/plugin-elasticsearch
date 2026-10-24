@@ -129,30 +129,30 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                 }
 
                 Map.Entry<String, Object> operation = data.entrySet().iterator().next();
-                Map<String, Object> value = (Map<String, Object>) operation.getValue();
+                Map<String, Object> action = (Map<String, Object>) operation.getValue();
 
                 var bulkOperation = new BulkOperation.Builder();
 
                 switch (operation.getKey()) {
                     case "index":
-                        var indexOperation = writeMetadata(new IndexOperation.Builder<>(), value)
+                        var indexOperation = writeMetadata(new IndexOperation.Builder<>(), action)
                             .document(parseline(isJson, input.readLine()));
                         bulkOperation.index(indexOperation.build());
                         break;
                     case "create":
-                        var createOperation = writeMetadata(new CreateOperation.Builder<>(), value)
+                        var createOperation = writeMetadata(new CreateOperation.Builder<>(), action)
                             .document(parseline(isJson, input.readLine()));
                         bulkOperation.create(createOperation.build());
                         break;
                     case "update":
-                        var updateOperation = metadata(new UpdateOperation.Builder<>(), value)
-                            .retryOnConflict(meta(value, "retry_on_conflict", Integer.class))
-                            .requireAlias(meta(value, "require_alias", Boolean.class))
-                            .action(updateAction(value, isJson, input.readLine()));
+                        var updateOperation = metadata(new UpdateOperation.Builder<>(), action)
+                            .retryOnConflict(field(action, "retry_on_conflict", Integer.class))
+                            .requireAlias(field(action, "require_alias", Boolean.class))
+                            .action(updateAction(action, isJson, input.readLine()));
                         bulkOperation.update(updateOperation.build());
                         break;
                     case "delete":
-                        var deleteOperation = metadata(new DeleteOperation.Builder(), value);
+                        var deleteOperation = metadata(new DeleteOperation.Builder(), action);
                         bulkOperation.delete(deleteOperation.build());
                         break;
                     default:
@@ -189,30 +189,30 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
             .build();
     }
 
-    private static <T extends BulkOperationBase.AbstractBuilder<T>> T metadata(T builder, Map<String, Object> value) {
+    private static <T extends BulkOperationBase.AbstractBuilder<T>> T metadata(T builder, Map<String, Object> action) {
         return builder
-            .id(meta(value, "_id", String.class))
-            .index(meta(value, "_index", String.class))
-            .routing(meta(value, "routing", String.class))
-            .ifSeqNo(meta(value, "if_seq_no", Long.class))
-            .ifPrimaryTerm(meta(value, "if_primary_term", Long.class))
-            .version(meta(value, "version", Long.class))
-            .versionType(versionType(value));
+            .id(field(action, "_id", String.class))
+            .index(field(action, "_index", String.class))
+            .routing(field(action, "routing", String.class))
+            .ifSeqNo(field(action, "if_seq_no", Long.class))
+            .ifPrimaryTerm(field(action, "if_primary_term", Long.class))
+            .version(field(action, "version", Long.class))
+            .versionType(versionType(action));
     }
 
-    private static <T extends WriteOperation.AbstractBuilder<T>> T writeMetadata(T builder, Map<String, Object> value) {
-        metadata(builder, value)
-            .pipeline(meta(value, "pipeline", String.class))
-            .requireAlias(meta(value, "require_alias", Boolean.class));
-        Map<String, String> dynamicTemplates = meta(value, "dynamic_templates", DYNAMIC_TEMPLATES_TYPE);
+    private static <T extends WriteOperation.AbstractBuilder<T>> T writeMetadata(T builder, Map<String, Object> action) {
+        metadata(builder, action)
+            .pipeline(field(action, "pipeline", String.class))
+            .requireAlias(field(action, "require_alias", Boolean.class));
+        Map<String, String> dynamicTemplates = field(action, "dynamic_templates", DYNAMIC_TEMPLATES_TYPE);
         if (dynamicTemplates != null) {
             builder.dynamicTemplates(dynamicTemplates);
         }
         return builder;
     }
 
-    private static VersionType versionType(Map<String, Object> value) {
-        var raw = meta(value, "version_type", String.class);
+    private static VersionType versionType(Map<String, Object> action) {
+        var raw = field(action, "version_type", String.class);
         if (raw == null) {
             return null;
         }
@@ -227,17 +227,17 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
         }
     }
 
-    private static <T> T meta(Map<String, Object> value, String key, Class<T> type) {
-        return meta(value, key, OBJECT_MAPPER.constructType(type));
+    private static <T> T field(Map<String, Object> action, String key, Class<T> type) {
+        return field(action, key, OBJECT_MAPPER.constructType(type));
     }
 
-    private static <T> T meta(Map<String, Object> value, String key, JavaType type) {
+    private static <T> T field(Map<String, Object> action, String key, JavaType type) {
         try {
-            return OBJECT_MAPPER.convertValue(value.get(key), type);
+            return OBJECT_MAPPER.convertValue(action.get(key), type);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
-                "Invalid '" + key + "' in bulk action line for _id '" + value.get("_id") + "': expected " +
-                    type.getRawClass().getSimpleName() + ", got '" + value.get(key) + "'",
+                "Invalid '" + key + "' in bulk action line for _id '" + action.get("_id") + "': expected " +
+                    type.getRawClass().getSimpleName() + ", got '" + action.get(key) + "'",
                 e
             );
         }
