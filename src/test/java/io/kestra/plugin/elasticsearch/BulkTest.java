@@ -53,26 +53,9 @@ class BulkTest extends ElsContainer {
 
         String indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
 
-        File tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
-        try (OutputStream output = new FileOutputStream(tempFile)) {
-            DATA.apply(indice)
-                .forEach(
-                    throwConsumer(
-                        s -> output.write(
-                            (JacksonMapper
-                                .ofJson()
-                                .writeValueAsString(s) + "\n")
-                                .getBytes(StandardCharsets.UTF_8)
-                        )
-                    )
-                );
-        }
-
-        URI uri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
-
         Bulk put = Bulk.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .from(uri.toString())
+            .from(upload(DATA.apply(indice)).toString())
             .chunk(Property.ofValue(10))
             .build();
 
@@ -85,102 +68,83 @@ class BulkTest extends ElsContainer {
 
     @Test
     void duplicateCreate_fails() throws Exception {
-        var runContext = runContextFactory.of();
         var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
 
-        var tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
-        try (OutputStream output = new FileOutputStream(tempFile)) {
-            List.of(
-                Map.of("create", Map.of("_index", indice, "_id", "1")),
-                Map.of("field1", "value1"),
-                Map.of("create", Map.of("_index", indice, "_id", "1")),
-                Map.of("field1", "value2")
+        var e = assertThrows(
+            RuntimeException.class, () -> bulk(
+                List.of(
+                    Map.of("create", Map.of("_index", indice, "_id", "1")),
+                    Map.of("field1", "value1"),
+                    Map.of("create", Map.of("_index", indice, "_id", "1")),
+                    Map.of("field1", "value2")
+                )
             )
-                .forEach(
-                    throwConsumer(
-                        s -> output.write(
-                            (JacksonMapper
-                                .ofJson()
-                                .writeValueAsString(s) + "\n")
-                                .getBytes(StandardCharsets.UTF_8)
-                        )
-                    )
-                );
-        }
-
-        var uri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
-
-        var bulk = Bulk.builder()
-            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .from(uri.toString())
-            .build();
-
-        var e = assertThrows(RuntimeException.class, () -> bulk.run(runContext));
+        );
         assertThat(e.getMessage(), containsString("version conflict"));
     }
 
     @Test
     void staleSeqNo_fails() throws Exception {
-        var runContext = runContextFactory.of();
-        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+        var indice = seedPastSeqNoZero();
 
-        // index a doc, then update it, so its seq_no advances past 0
-        var firstPass = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
-        try (OutputStream output = new FileOutputStream(firstPass)) {
+        var e = assertThrows(
+            RuntimeException.class, () -> bulk(
+                List.of(
+                    Map.of("index", Map.of("_index", indice, "_id", "1", "if_seq_no", 0, "if_primary_term", 1)),
+                    Map.of("field1", "stale")
+                )
+            )
+        );
+        assertThat(e.getMessage(), containsString("version conflict"));
+    }
+
+    @Test
+    void staleSeqNoOnPlainUpdate_fails() throws Exception {
+        var indice = seedPastSeqNoZero();
+
+        var e = assertThrows(
+            RuntimeException.class, () -> bulk(
+                List.of(
+                    Map.of("update", Map.of("_index", indice, "_id", "1", "if_seq_no", 0, "if_primary_term", 1)),
+                    Map.of("field1", "stale")
+                )
+            )
+        );
+        assertThat(e.getMessage(), containsString("version conflict"));
+    }
+
+    // index then update a doc, so its seq_no advances to 1
+    private String seedPastSeqNoZero() throws Exception {
+        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+        bulk(
             List.of(
                 Map.of("index", Map.of("_index", indice, "_id", "1")),
                 Map.of("field1", "value1"),
                 Map.of("update", Map.of("_index", indice, "_id", "1")),
                 Map.of("doc", Map.of("field2", "value2"))
             )
-                .forEach(
-                    throwConsumer(
-                        s -> output.write(
-                            (JacksonMapper
-                                .ofJson()
-                                .writeValueAsString(s) + "\n")
-                                .getBytes(StandardCharsets.UTF_8)
-                        )
-                    )
-                );
-        }
+        );
+        return indice;
+    }
 
-        var firstUri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(firstPass));
-
+    private void bulk(List<? extends Map<String, ?>> rows) throws Exception {
         Bulk.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .from(firstUri.toString())
+            .from(upload(rows).toString())
             .build()
-            .run(runContext);
+            .run(runContextFactory.of());
+    }
 
-        // replay with the seq_no from before the update: now stale, the task must fail
-        var replay = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
-        try (OutputStream output = new FileOutputStream(replay)) {
-            List.of(
-                Map.of("index", Map.of("_index", indice, "_id", "1", "if_seq_no", 0, "if_primary_term", 1)),
-                Map.of("field1", "stale")
-            )
-                .forEach(
-                    throwConsumer(
-                        s -> output.write(
-                            (JacksonMapper
-                                .ofJson()
-                                .writeValueAsString(s) + "\n")
-                                .getBytes(StandardCharsets.UTF_8)
-                        )
-                    )
-                );
+    private URI upload(List<? extends Map<String, ?>> rows) throws Exception {
+        var tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
+        try (OutputStream output = new FileOutputStream(tempFile)) {
+            for (var row : rows) {
+                output.write((JacksonMapper.ofJson().writeValueAsString(row) + "\n").getBytes(StandardCharsets.UTF_8));
+            }
         }
-
-        var replayUri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(replay));
-
-        var bulk = Bulk.builder()
-            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .from(replayUri.toString())
-            .build();
-
-        var e = assertThrows(RuntimeException.class, () -> bulk.run(runContext));
-        assertThat(e.getMessage(), containsString("version conflict"));
+        try (var input = new FileInputStream(tempFile)) {
+            return storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), input);
+        }
     }
 
     @Test

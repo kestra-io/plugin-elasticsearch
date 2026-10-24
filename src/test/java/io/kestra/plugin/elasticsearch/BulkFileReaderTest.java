@@ -89,10 +89,12 @@ class BulkFileReaderTest {
             {"doc":{"status":"new"},"unrelated_field":"x"}
             """));
 
-        assertThat(e.getMessage(), is(
-            "Update body for _id '7' mixes native update fields with document fields: " +
-                "wrap the document in 'doc', or use the Load task with opType UPDATE for plain records"
-        ));
+        assertThat(
+            e.getMessage(), is(
+                "Update body for _id '7' mixes native update fields with document fields: " +
+                    "wrap the document in 'doc', or use the Load task with opType UPDATE for plain records"
+            )
+        );
     }
 
     @Test
@@ -137,16 +139,39 @@ class BulkFileReaderTest {
     }
 
     @Test
-    void updateCarriesRetryOnConflictAndSeqNo() throws Exception {
+    void updateCarriesRetryOnConflict() throws Exception {
         var operations = read("""
-            {"update":{"_index":"bulk_guard","_id":"1","retry_on_conflict":3,"if_seq_no":7,"if_primary_term":2}}
+            {"update":{"_index":"bulk_guard","_id":"1","retry_on_conflict":3}}
             {"field":"value"}
             """);
 
         var update = operations.getFirst().update();
         assertThat(update.retryOnConflict(), is(3));
+        assertThat(update.action().docAsUpsert(), is(true));
+    }
+
+    @Test
+    void conditionalPlainUpdateIsNotUpserted() throws Exception {
+        var operations = read("""
+            {"update":{"_index":"bulk_guard","_id":"1","if_seq_no":7,"if_primary_term":2}}
+            {"field":"value"}
+            """);
+
+        var update = operations.getFirst().update();
         assertThat(update.ifSeqNo(), is(7L));
         assertThat(update.ifPrimaryTerm(), is(2L));
+        assertThat(update.action().doc(), is(Map.of("field", "value")));
+        assertThat(update.action().docAsUpsert(), nullValue());
+    }
+
+    @Test
+    void invalidMetadataNamesTheField() {
+        var e = assertThrows(IllegalArgumentException.class, () -> read("""
+            {"index":{"_index":"bulk_guard","_id":"1","if_seq_no":"abc"}}
+            {"status":"fresh"}
+            """));
+
+        assertThat(e.getMessage(), is("Invalid 'if_seq_no' in bulk action line for _id '1': expected Long, got 'abc'"));
     }
 
     @Test

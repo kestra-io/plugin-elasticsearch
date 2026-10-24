@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.kestra.core.models.annotations.Example;
@@ -54,7 +54,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
         dynamic_templates apply to index and create; require_alias applies to index, create and update;
         retry_on_conflict applies to update.
         Update bodies that contain native update fields (doc, script, upsert, doc_as_upsert, scripted_upsert, detect_noop or _source) are applied with Elasticsearch bulk API semantics, so upserts only happen when the body asks for them.
-        For compatibility, update bodies without any native update field are treated as plain partial documents with doc_as_upsert enabled.
+        For compatibility, update bodies without any native update field are treated as plain partial documents with doc_as_upsert enabled, unless the action line sets if_seq_no, which Elasticsearch does not allow with upserts.
         A plain partial document that itself has source fields named like native update fields is ambiguous: wrap it in a doc field, or use the Load task with opType UPDATE instead.
         """
 )
@@ -93,6 +93,9 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
     private static final Set<String> UPDATE_FIELDS = Set.of(
         "doc", "script", "upsert", "doc_as_upsert", "scripted_upsert", "detect_noop", "_source"
     );
+
+    private static final JavaType DYNAMIC_TEMPLATES_TYPE = OBJECT_MAPPER.getTypeFactory()
+        .constructMapType(Map.class, String.class, String.class);
 
     @Override
     protected Flux<BulkOperation> source(RunContext runContext, InputStream inputStream) throws IOException {
@@ -142,11 +145,10 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                         bulkOperation.create(createOperation.build());
                         break;
                     case "update":
-                        var updateLine = input.readLine();
                         var updateOperation = metadata(new UpdateOperation.Builder<>(), value)
-                            .retryOnConflict(OBJECT_MAPPER.convertValue(value.get("retry_on_conflict"), Integer.class))
-                            .requireAlias(OBJECT_MAPPER.convertValue(value.get("require_alias"), Boolean.class))
-                            .action(updateAction(OBJECT_MAPPER.convertValue(value.get("_id"), String.class), isJson, updateLine, parseline(isJson, updateLine)));
+                            .retryOnConflict(meta(value, "retry_on_conflict", Integer.class))
+                            .requireAlias(meta(value, "require_alias", Boolean.class))
+                            .action(updateAction(value, isJson, input.readLine()));
                         bulkOperation.update(updateOperation.build());
                         break;
                     case "delete":
@@ -164,8 +166,9 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
         });
     }
 
-    // legacy: bodies without native update fields are upserted as plain documents
-    static UpdateAction<Object, Object> updateAction(String id, Boolean isJson, String line, Map<?, ?> body) throws JsonProcessingException {
+    // legacy: bodies without native update fields are upserted as plain documents, except conditional writes since ES rejects if_seq_no with upsert
+    static UpdateAction<Object, Object> updateAction(Map<String, Object> action, Boolean isJson, String line) throws JsonProcessingException {
+        var body = parseline(isJson, line);
         if (body.keySet().stream().anyMatch(UPDATE_FIELDS::contains)) {
             try {
                 return new UpdateAction.Builder<>()
@@ -173,7 +176,7 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                     .build();
             } catch (JsonpMappingException e) {
                 throw new IllegalArgumentException(
-                    "Update body for _id '" + id + "' mixes native update fields with document fields: " +
+                    "Update body for _id '" + action.get("_id") + "' mixes native update fields with document fields: " +
                         "wrap the document in 'doc', or use the Load task with opType UPDATE for plain records",
                     e
                 );
@@ -182,52 +185,62 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
 
         return new UpdateAction.Builder<>()
             .doc(body)
-            .docAsUpsert(true)
+            .docAsUpsert(action.get("if_seq_no") == null ? true : null)
             .build();
     }
 
     private static <T extends BulkOperationBase.AbstractBuilder<T>> T metadata(T builder, Map<String, Object> value) {
         return builder
-            .id(OBJECT_MAPPER.convertValue(value.get("_id"), String.class))
-            .index(OBJECT_MAPPER.convertValue(value.get("_index"), String.class))
-            .routing(OBJECT_MAPPER.convertValue(value.get("routing"), String.class))
-            .ifSeqNo(OBJECT_MAPPER.convertValue(value.get("if_seq_no"), Long.class))
-            .ifPrimaryTerm(OBJECT_MAPPER.convertValue(value.get("if_primary_term"), Long.class))
-            .version(OBJECT_MAPPER.convertValue(value.get("version"), Long.class))
-            .versionType(versionType(value.get("version_type")));
+            .id(meta(value, "_id", String.class))
+            .index(meta(value, "_index", String.class))
+            .routing(meta(value, "routing", String.class))
+            .ifSeqNo(meta(value, "if_seq_no", Long.class))
+            .ifPrimaryTerm(meta(value, "if_primary_term", Long.class))
+            .version(meta(value, "version", Long.class))
+            .versionType(versionType(value));
     }
 
     private static <T extends WriteOperation.AbstractBuilder<T>> T writeMetadata(T builder, Map<String, Object> value) {
         metadata(builder, value)
-            .pipeline(OBJECT_MAPPER.convertValue(value.get("pipeline"), String.class))
-            .requireAlias(OBJECT_MAPPER.convertValue(value.get("require_alias"), Boolean.class));
-        if (value.get("dynamic_templates") != null) {
-            Map<String, String> dynamicTemplates = OBJECT_MAPPER.convertValue(
-                value.get("dynamic_templates"),
-                new TypeReference<Map<String, String>>() {}
-            );
+            .pipeline(meta(value, "pipeline", String.class))
+            .requireAlias(meta(value, "require_alias", Boolean.class));
+        Map<String, String> dynamicTemplates = meta(value, "dynamic_templates", DYNAMIC_TEMPLATES_TYPE);
+        if (dynamicTemplates != null) {
             builder.dynamicTemplates(dynamicTemplates);
         }
         return builder;
     }
 
-    private static VersionType versionType(Object raw) {
+    private static VersionType versionType(Map<String, Object> value) {
+        var raw = meta(value, "version_type", String.class);
         if (raw == null) {
             return null;
         }
-        String value = OBJECT_MAPPER.convertValue(raw, String.class);
         try {
-            return VersionType._DESERIALIZER.parse(value);
+            return VersionType._DESERIALIZER.parse(raw);
         } catch (NoSuchElementException e) {
             throw new IllegalArgumentException(
-                "Invalid version_type '" + value + "': expected one of " + allowedVersionTypes(),
+                "Invalid version_type '" + raw + "': expected one of " +
+                    Arrays.stream(VersionType.values()).map(VersionType::jsonValue).collect(Collectors.joining(", ")),
                 e
             );
         }
     }
 
-    private static String allowedVersionTypes() {
-        return Arrays.stream(VersionType.values()).map(VersionType::jsonValue).collect(Collectors.joining(", "));
+    private static <T> T meta(Map<String, Object> value, String key, Class<T> type) {
+        return meta(value, key, OBJECT_MAPPER.constructType(type));
+    }
+
+    private static <T> T meta(Map<String, Object> value, String key, JavaType type) {
+        try {
+            return OBJECT_MAPPER.convertValue(value.get(key), type);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                "Invalid '" + key + "' in bulk action line for _id '" + value.get("_id") + "': expected " +
+                    type.getRawClass().getSimpleName() + ", got '" + value.get(key) + "'",
+                e
+            );
+        }
     }
 
     private static Map<?, ?> parseline(Boolean isJson, String line) throws JsonProcessingException {
