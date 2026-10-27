@@ -130,12 +130,27 @@ class BulkFileReaderTest {
         var operations = read("""
             {"index":{"_index":"bulk_guard","_id":7,"routing":123,"require_alias":"true"}}
             {"status":"fresh"}
+            {"create":{"_index":"bulk_guard","_id":101}}
+            {"status":"created"}
+            {"update":{"_index":"bulk_guard","_id":102}}
+            {"field":"updated"}
+            {"delete":{"_index":"bulk_guard","_id":103}}
             """);
 
+        assertThat(operations.size(), is(4));
         var index = operations.getFirst().index();
         assertThat(index.id(), is("7"));
         assertThat(index.routing(), is("123"));
         assertThat(index.requireAlias(), is(true));
+
+        var create = operations.get(1).create();
+        assertThat(create.id(), is("101"));
+
+        var update = operations.get(2).update();
+        assertThat(update.id(), is("102"));
+
+        var delete = operations.get(3).delete();
+        assertThat(delete.id(), is("103"));
     }
 
     @Test
