@@ -1,5 +1,5 @@
 id: all_elasticsearch
-namespace: sanitycheck.plugin-elasticsearch
+namespace: sanitychecks.plugin-elasticsearch
 
 tasks:
   - id: init
@@ -21,7 +21,7 @@ tasks:
     type: io.kestra.plugin.core.flow.Sleep
     duration: "PT45S"
 
-  - id: parallel
+  - id: loop
     type: io.kestra.plugin.core.flow.Loop
     values: ["bulk","esql","load","put_get","request","scroll","searching"]
     concurrencyLimit: 0
