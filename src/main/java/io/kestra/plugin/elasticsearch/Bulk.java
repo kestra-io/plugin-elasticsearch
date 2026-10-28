@@ -157,8 +157,8 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
             Row row;
 
             while ((row = rows.next()) != null) {
-                Map.Entry<String, Object> operation = row.data().entrySet().iterator().next();
-                Map<String, Object> action = (Map<String, Object>) operation.getValue();
+                var operation = row.data().entrySet().iterator().next();
+                var action = (Map<String, Object>) operation.getValue();
 
                 var bulkOperation = new BulkOperation.Builder();
 
