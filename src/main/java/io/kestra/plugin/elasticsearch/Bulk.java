@@ -1,10 +1,12 @@
 package io.kestra.plugin.elasticsearch;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.kestra.core.models.annotations.Example;
@@ -24,6 +27,7 @@ import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.executions.metrics.Timer;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.serializers.JacksonMapper;
 
 import co.elastic.clients.elasticsearch._types.VersionType;
@@ -49,6 +53,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
     title = "Replay Elasticsearch bulk file",
     description = """
         Reads an Elasticsearch bulk file (NDJSON or ION) from Kestra storage and replays operations. Follows the bulk file contract; see Elasticsearch bulk API docs for format.
+        ION files can be text or binary, so files written by upstream tasks are read on every Kestra version.
         Action-line metadata is carried onto each operation so the replay honors the file's concurrency and routing
         intents: routing, if_seq_no, if_primary_term, version and version_type apply to every op; pipeline and
         dynamic_templates apply to index and create; require_alias applies to index, create and update;
@@ -99,36 +104,60 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
 
     @Override
     protected Flux<BulkOperation> source(RunContext runContext, InputStream inputStream) throws IOException {
-        return Flux
-            .create(this.fileReader(new BufferedReader(new InputStreamReader(inputStream))), FluxSink.OverflowStrategy.BUFFER);
+        return this.operations(inputStream);
+    }
+
+    Flux<BulkOperation> operations(InputStream input) throws IOException {
+        var reader = isNdjson(input)
+            ? this.fileReader(new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8)))
+            : this.ionReader(input);
+
+        return Flux.create(reader, FluxSink.OverflowStrategy.BUFFER);
+    }
+
+    public Consumer<FluxSink<BulkOperation>> fileReader(BufferedReader input) throws IOException {
+        return this.reader(() ->
+        {
+            var line = input.readLine();
+            return line == null ? null : new Row(JacksonMapper.toMap(line), line);
+        });
+    }
+
+    // binary Ion (Kestra 2.x) has no lines and FileSerde on Kestra 1.x only reads text Ion, while the Jackson Ion reader detects both
+    private Consumer<FluxSink<BulkOperation>> ionReader(InputStream input) throws IOException {
+        MappingIterator<Map<String, Object>> records = JacksonMapper.ofIon()
+            .readerFor(JacksonMapper.MAP_TYPE_REFERENCE)
+            .readValues(input);
+
+        return this.reader(() -> records.hasNext() ? new Row(records.next(), null) : null);
+    }
+
+    // peeks at the first line without consuming it: only a JSON first line keeps the line-based NDJSON reader
+    private static boolean isNdjson(InputStream input) throws IOException {
+        input.mark(FileSerde.BUFFER_SIZE);
+        try {
+            var firstLine = new ByteArrayOutputStream();
+            int b;
+            while (firstLine.size() < FileSerde.BUFFER_SIZE && (b = input.read()) != -1 && b != '\n') {
+                firstLine.write(b);
+            }
+            OBJECT_MAPPER.readTree(firstLine.toString(StandardCharsets.UTF_8));
+            return true;
+        } catch (JacksonException e) {
+            return false;
+        } finally {
+            input.reset();
+        }
     }
 
     @SuppressWarnings("unchecked")
-    public Consumer<FluxSink<BulkOperation>> fileReader(BufferedReader input) throws IOException {
+    private Consumer<FluxSink<BulkOperation>> reader(RowSource rows) throws IOException {
         return throwConsumer(s ->
         {
-            String row;
-            Boolean isJson = null;
+            Row row;
 
-            while ((row = input.readLine()) != null) {
-                // validate if it's json or ion
-                if (isJson == null) {
-                    try {
-                        OBJECT_MAPPER.readTree(row);
-                        isJson = true;
-                    } catch (JacksonException e) {
-                        isJson = false;
-                    }
-                }
-
-                Map<String, Object> data;
-                if (isJson) {
-                    data = JacksonMapper.toMap(row);
-                } else {
-                    data = JacksonMapper.ofIon().readValue(row, JacksonMapper.MAP_TYPE_REFERENCE);
-                }
-
-                Map.Entry<String, Object> operation = data.entrySet().iterator().next();
+            while ((row = rows.next()) != null) {
+                Map.Entry<String, Object> operation = row.data().entrySet().iterator().next();
                 Map<String, Object> action = (Map<String, Object>) operation.getValue();
 
                 var bulkOperation = new BulkOperation.Builder();
@@ -136,19 +165,19 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
                 switch (operation.getKey()) {
                     case "index":
                         var indexOperation = writeMetadata(new IndexOperation.Builder<>(), action)
-                            .document(parseline(isJson, input.readLine()));
+                            .document(body(rows, operation.getKey(), action).data());
                         bulkOperation.index(indexOperation.build());
                         break;
                     case "create":
                         var createOperation = writeMetadata(new CreateOperation.Builder<>(), action)
-                            .document(parseline(isJson, input.readLine()));
+                            .document(body(rows, operation.getKey(), action).data());
                         bulkOperation.create(createOperation.build());
                         break;
                     case "update":
                         var updateOperation = metadata(new UpdateOperation.Builder<>(), action)
                             .retryOnConflict(field(action, "retry_on_conflict", Integer.class))
                             .requireAlias(field(action, "require_alias", Boolean.class))
-                            .action(updateAction(action, isJson, input.readLine()));
+                            .action(updateAction(action, body(rows, operation.getKey(), action)));
                         bulkOperation.update(updateOperation.build());
                         break;
                     case "delete":
@@ -166,13 +195,24 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
         });
     }
 
+    private static Row body(RowSource rows, String type, Map<String, Object> action) throws IOException {
+        var body = rows.next();
+        if (body == null) {
+            throw new IllegalArgumentException(
+                "Bulk file ends after the '" + type + "' action for _id '" + action.get("_id") + "': " +
+                    "index, create and update actions must be followed by a body line"
+            );
+        }
+        return body;
+    }
+
     // legacy: bodies without native update fields are upserted as plain documents, except conditional writes since ES rejects if_seq_no with upsert
-    static UpdateAction<Object, Object> updateAction(Map<String, Object> action, Boolean isJson, String line) throws JsonProcessingException {
-        var body = parseline(isJson, line);
+    static UpdateAction<Object, Object> updateAction(Map<String, Object> action, Row row) throws JsonProcessingException {
+        var body = row.data();
         if (body.keySet().stream().anyMatch(UPDATE_FIELDS::contains)) {
             try {
                 return new UpdateAction.Builder<>()
-                    .withJson(new StringReader(isJson ? line : OBJECT_MAPPER.writeValueAsString(body)))
+                    .withJson(new StringReader(row.json() != null ? row.json() : OBJECT_MAPPER.writeValueAsString(body)))
                     .build();
             } catch (JsonpMappingException e) {
                 throw new IllegalArgumentException(
@@ -243,11 +283,16 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
         }
     }
 
-    private static Map<?, ?> parseline(Boolean isJson, String line) throws JsonProcessingException {
-        if (isJson) {
-            return OBJECT_MAPPER.readValue(line, JacksonMapper.MAP_TYPE_REFERENCE);
-        } else {
-            return JacksonMapper.ofIon().readValue(line, JacksonMapper.MAP_TYPE_REFERENCE);
+    // json is the raw NDJSON line, kept so native update bodies are passed through unchanged; null for Ion records
+    record Row(Map<String, Object> data, String json) {
+        @Override
+        public String toString() {
+            return json != null ? json : String.valueOf(data);
         }
+    }
+
+    @FunctionalInterface
+    interface RowSource {
+        Row next() throws IOException;
     }
 }

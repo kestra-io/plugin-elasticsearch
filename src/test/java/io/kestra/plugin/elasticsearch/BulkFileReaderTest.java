@@ -1,17 +1,21 @@
 package io.kestra.plugin.elasticsearch;
 
-import java.io.BufferedReader;
-import java.io.StringReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.dataformat.ion.IonObjectMapper;
+
+import io.kestra.core.serializers.FileSerde;
+
 import co.elastic.clients.elasticsearch._types.VersionType;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import co.elastic.clients.json.JsonData;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -22,12 +26,77 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 // Reader-level tests for Bulk action metadata and update bodies: no cluster needed, fileReader only builds operations.
 class BulkFileReaderTest {
 
+    private static final List<Map<String, Object>> ION_RECORDS = List.of(
+        Map.of("index", Map.of("_index", "bulk_ion", "_id", "1")),
+        Map.of("name", "ion1", "count", 1),
+        Map.of("update", Map.of("_index", "bulk_ion", "_id", "1")),
+        Map.of("doc", Map.of("name", "ion1-updated")),
+        Map.of("delete", Map.of("_index", "bulk_ion", "_id", "2"))
+    );
+
     private List<BulkOperation> read(String ndjson) throws Exception {
-        var bulk = new Bulk();
-        return Flux
-            .create(bulk.fileReader(new BufferedReader(new StringReader(ndjson))), FluxSink.OverflowStrategy.BUFFER)
+        return read(ndjson.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private List<BulkOperation> read(byte[] content) throws Exception {
+        return new Bulk().operations(new ByteArrayInputStream(content))
             .collectList()
             .block();
+    }
+
+    // Kestra 2.x writes binary Ion, which the Kestra 1.x FileSerde used by this build cannot produce
+    static byte[] binaryIon(List<Map<String, Object>> records) throws IOException {
+        var output = new ByteArrayOutputStream();
+        try (var writer = IonObjectMapper.builderForBinaryWriters().build().writer().writeValues(output)) {
+            for (var record : records) {
+                writer.write(record);
+            }
+        }
+        return output.toByteArray();
+    }
+
+    private static byte[] textIon(List<Map<String, Object>> records) throws IOException {
+        var output = new ByteArrayOutputStream();
+        for (var record : records) {
+            FileSerde.write(output, record);
+        }
+        return output.toByteArray();
+    }
+
+    private static void assertIonOperations(List<BulkOperation> operations) {
+        assertThat(operations.size(), is(3));
+
+        var index = operations.get(0).index();
+        assertThat(index.id(), is("1"));
+        assertThat(index.document(), is(Map.of("name", "ion1", "count", 1)));
+
+        var update = operations.get(1).update();
+        assertThat(update.id(), is("1"));
+        assertThat(((JsonData) update.action().doc()).toJson().toString(), is("{\"name\":\"ion1-updated\"}"));
+        assertThat(update.action().docAsUpsert(), nullValue());
+
+        assertThat(operations.get(2).delete().id(), is("2"));
+    }
+
+    @Test
+    void binaryIonIsRead() throws Exception {
+        assertIonOperations(read(binaryIon(ION_RECORDS)));
+    }
+
+    @Test
+    void textIonIsRead() throws Exception {
+        assertIonOperations(read(textIon(ION_RECORDS)));
+    }
+
+    @Test
+    void missingBodyFailsWithGuidance() {
+        var e = assertThrows(IllegalArgumentException.class, () -> read("""
+            {"index":{"_index":"bulk_guard","_id":"1"}}
+            """));
+
+        assertThat(e.getMessage(), is(
+            "Bulk file ends after the 'index' action for _id '1': index, create and update actions must be followed by a body line"
+        ));
     }
 
     @Test
