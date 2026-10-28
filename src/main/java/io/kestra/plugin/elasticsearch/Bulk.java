@@ -123,7 +123,7 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
         });
     }
 
-    // binary Ion (Kestra 2.x) has no lines and FileSerde on Kestra 1.x only reads text Ion, while the Jackson Ion reader detects both
+    // intentionally mirrors FileSerde.readAll on Kestra 2.x: FileSerde on the Kestra 1.x build only reads text Ion, while this reader detects text and binary
     private Consumer<FluxSink<BulkOperation>> ionReader(InputStream input) throws IOException {
         MappingIterator<Map<String, Object>> records = JacksonMapper.ofIon()
             .readerFor(JacksonMapper.MAP_TYPE_REFERENCE)
@@ -198,8 +198,9 @@ public class Bulk extends AbstractLoad implements RunnableTask<Bulk.Output> {
     private static Row body(RowSource rows, String type, Map<String, Object> action) throws IOException {
         var body = rows.next();
         if (body == null) {
+            var target = action.get("_id") != null ? "_id '" + action.get("_id") + "'" : "index '" + action.get("_index") + "'";
             throw new IllegalArgumentException(
-                "Bulk file ends after the '" + type + "' action for _id '" + action.get("_id") + "': " +
+                "Bulk file ends after the '" + type + "' action for " + target + ": " +
                     "index, create and update actions must be followed by a body line"
             );
         }

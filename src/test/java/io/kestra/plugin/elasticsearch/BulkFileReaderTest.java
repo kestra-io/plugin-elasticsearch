@@ -66,7 +66,7 @@ class BulkFileReaderTest {
     private static void assertIonOperations(List<BulkOperation> operations) {
         assertThat(operations.size(), is(3));
 
-        var index = operations.get(0).index();
+        var index = operations.getFirst().index();
         assertThat(index.id(), is("1"));
         assertThat(index.document(), is(Map.of("name", "ion1", "count", 1)));
 
@@ -96,6 +96,17 @@ class BulkFileReaderTest {
 
         assertThat(e.getMessage(), is(
             "Bulk file ends after the 'index' action for _id '1': index, create and update actions must be followed by a body line"
+        ));
+    }
+
+    @Test
+    void missingBodyWithoutIdNamesTheIndex() {
+        var e = assertThrows(IllegalArgumentException.class, () -> read("""
+            {"create":{"_index":"bulk_guard"}}
+            """));
+
+        assertThat(e.getMessage(), is(
+            "Bulk file ends after the 'create' action for index 'bulk_guard': index, create and update actions must be followed by a body line"
         ));
     }
 

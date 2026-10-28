@@ -177,18 +177,18 @@ class BulkTest extends ElsContainer {
 
     @Test
     void runBinaryIon() throws Exception {
-        RunContext runContext = runContextFactory.of();
+        var runContext = runContextFactory.of();
 
-        String indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
 
-        URI uri = storageInterface.put(
+        var uri = storageInterface.put(
             TenantService.MAIN_TENANT,
             null,
             URI.create("/" + IdUtils.create() + ".ion"),
             new ByteArrayInputStream(BulkFileReaderTest.binaryIon(DATA.apply(indice)))
         );
 
-        Bulk.Output runOutput = Bulk.builder()
+        var runOutput = Bulk.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
             .from(uri.toString())
             .chunk(Property.ofValue(10))
