@@ -1,5 +1,6 @@
 package io.kestra.plugin.elasticsearch;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -172,5 +173,37 @@ class BulkTest extends ElsContainer {
         assertThat(runOutput.getSize(), is(5L));
         assertThat(runContext.metrics().stream().filter(e -> e.getName().equals("requests.count")).findFirst().orElseThrow().getValue(), is(1D));
         assertThat(runContext.metrics().stream().filter(e -> e.getName().equals("records")).findFirst().orElseThrow().getValue(), is(5D));
+    }
+
+    @Test
+    void runBinaryIon() throws Exception {
+        var runContext = runContextFactory.of();
+
+        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+
+        var uri = storageInterface.put(
+            TenantService.MAIN_TENANT,
+            null,
+            URI.create("/" + IdUtils.create() + ".ion"),
+            new ByteArrayInputStream(BulkFileReaderTest.binaryIon(DATA.apply(indice)))
+        );
+
+        var runOutput = Bulk.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .from(uri.toString())
+            .chunk(Property.ofValue(10))
+            .build()
+            .run(runContext);
+
+        assertThat(runOutput.getSize(), is(5L));
+
+        var document = Get.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .index(Property.ofValue(indice))
+            .key(Property.ofValue("3"))
+            .build()
+            .run(runContextFactory.of());
+
+        assertThat(document.getRow().get("field1"), is("value3"));
     }
 }
