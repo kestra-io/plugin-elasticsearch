@@ -1,5 +1,5 @@
 id: all_elasticsearch
-namespace: sanitycheck.plugin-elasticsearch
+namespace: sanitychecks.plugin-elasticsearch
 
 tasks:
   - id: init
@@ -21,15 +21,15 @@ tasks:
     type: io.kestra.plugin.core.flow.Sleep
     duration: "PT45S"
 
-  - id: parallel
-    type: io.kestra.plugin.core.flow.ForEach
+  - id: loop
+    type: io.kestra.plugin.core.flow.Loop
     values: ["bulk","esql","load","put_get","request","scroll","searching"]
     concurrencyLimit: 0
     tasks:
       - id: subflow
         type: io.kestra.plugin.core.flow.Subflow
         namespace: "{{ flow.namespace }}"
-        flowId: "{{ taskrun.value }}"
+        flowId: "{{ item.value }}"
         wait: true
         transmitFailed: true
         inputs:
