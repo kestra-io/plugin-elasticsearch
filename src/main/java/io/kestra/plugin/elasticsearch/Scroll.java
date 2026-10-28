@@ -135,7 +135,7 @@ public class Scroll extends AbstractSearch implements RunnableTask<Scroll.Output
             // metrics
             runContext.metric(Counter.of("requests.count", requestsCount.get()));
             runContext.metric(Counter.of("records", recordsCount.get()));
-            runContext.metric(Timer.of("requests.duration", Duration.ofNanos(requestsDuration.get())));
+            runContext.metric(Timer.of("requests.duration", Duration.ofMillis(requestsDuration.get())));
 
             // outputs
             return Output.builder()
