@@ -119,7 +119,7 @@ class ScrollRegressionTest {
         return runContext.metrics().stream()
             .filter(metric -> metric.getName().equals(name))
             .findFirst()
-            .orElseThrow(() -> new IllegalStateException("Missing metric: " + name))
+            .orElseThrow(() -> new IllegalStateException("Missing metric: %s".formatted(name)))
             .getValue();
     }
 
