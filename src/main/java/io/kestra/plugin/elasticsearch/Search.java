@@ -123,7 +123,7 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
             // metrics
             runContext.metric(Counter.of("requests.count", 1));
             runContext.metric(Counter.of("records", searchResponse.hits().hits().size()));
-            runContext.metric(Timer.of("requests.duration", Duration.ofNanos(searchResponse.took())));
+            runContext.metric(Timer.of("requests.duration", Duration.ofMillis(searchResponse.took())));
 
             // outputs
             var total = searchResponse.hits().total();
