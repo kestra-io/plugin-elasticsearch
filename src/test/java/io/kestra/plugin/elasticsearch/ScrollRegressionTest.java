@@ -19,6 +19,7 @@ import com.sun.net.httpserver.HttpServer;
 
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.serializers.JacksonMapper;
@@ -95,16 +96,38 @@ class ScrollRegressionTest {
         String hits = names.stream()
             .map(name -> "{\"_index\":\"test\",\"_id\":\"" + name + "\",\"_source\":{\"name\":\"" + name + "\"}}")
             .collect(Collectors.joining(","));
-        long took = responseDurations == null ? 1 : responseDurations.get(index);
-        return "{\"_scroll_id\":\"scroll-" + index + "\",\"took\":" + took + ",\"timed_out\":false," +
-            "\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"hits\":[" + hits + "]}}";
+        var took = responseDurations == null ? 1L : responseDurations.get(index);
+        return """
+            {
+                "_scroll_id": "scroll-%d",
+                "took": %d,
+                "timed_out": false,
+                "_shards": {"total":1,"successful":1,"skipped":0,"failed":0},
+                "hits": {"hits":[%s]}
+            }
+            """.formatted(index, took, hits);
+    }
+
+    private ElasticsearchConnection connection() {
+        var port = server.getAddress().getPort();
+        return ElasticsearchConnection.builder()
+            .hosts(List.of("http://127.0.0.1:%d".formatted(port)))
+            .build();
+    }
+
+    private Object metricValue(RunContext runContext, String name) {
+        return runContext.metrics().stream()
+            .filter(metric -> metric.getName().equals(name))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("Missing metric: " + name))
+            .getValue();
     }
 
     private Scroll task() {
         return Scroll.builder()
             .id(UUID.randomUUID().toString())
             .type(Scroll.class.getName())
-            .connection(ElasticsearchConnection.builder().hosts(List.of("http://127.0.0.1:" + server.getAddress().getPort())).build())
+            .connection(connection())
             .indexes(Property.ofValue(List.of("test")))
             .request("{\"size\":2,\"query\":{\"match_all\":{}}}")
             .build();
@@ -127,7 +150,7 @@ class ScrollRegressionTest {
         var search = Search.builder()
             .id(UUID.randomUUID().toString())
             .type(Search.class.getName())
-            .connection(ElasticsearchConnection.builder().hosts(List.of("http://127.0.0.1:" + server.getAddress().getPort())).build())
+            .connection(connection())
             .indexes(Property.ofValue(List.of("test")))
             .request("{\"query\":{\"match_all\":{}}}")
             .build();
@@ -140,7 +163,7 @@ class ScrollRegressionTest {
         assertTrue(clearedScrollIds.isEmpty());
         assertEquals(
             Duration.ofMillis(1500),
-            runContext.metrics().stream().filter(metric -> metric.getName().equals("requests.duration")).findFirst().orElseThrow().getValue()
+            metricValue(runContext, "requests.duration")
         );
     }
 
@@ -153,10 +176,10 @@ class ScrollRegressionTest {
         assertStoredNames(task().run(runContext), List.of("one", "two", "three"));
         assertEquals(List.of("scroll-0", "scroll-1"), requestedScrollIds);
         assertEquals(List.of("scroll-2"), clearedScrollIds);
-        assertEquals(2D, runContext.metrics().stream().filter(metric -> metric.getName().equals("requests.count")).findFirst().orElseThrow().getValue());
+        assertEquals(2D, metricValue(runContext, "requests.count"));
         assertEquals(
             Duration.ofMillis(1300),
-            runContext.metrics().stream().filter(metric -> metric.getName().equals("requests.duration")).findFirst().orElseThrow().getValue()
+            metricValue(runContext, "requests.duration")
         );
     }
 
