@@ -71,6 +71,60 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
                           name:
                             value: 'john'
                 """
+        ),
+        @Example(
+            full = true,
+            code = """
+                id: elasticsearch_semantic_search
+                namespace: company.team
+
+                tasks:
+                  - id: search_vector
+                    type: io.kestra.plugin.elasticsearch.Search
+                    connection:
+                      hosts:
+                        - "https://my-elastic-cluster:9200"
+                      headers:
+                        - "Authorization: ApiKey {{ secret('ES_API_KEY') }}"
+                    indexes:
+                      - "my_semantic_index"
+                    request:
+                      query:
+                        semantic:
+                          field: "inference_field"
+                          query: "How to use vector search in Elasticsearch?"
+                """
+        ),
+        @Example(
+            full = true,
+            code = """
+                id: elasticsearch_hybrid_search
+                namespace: company.team
+
+                tasks:
+                  - id: hybrid_search
+                    type: io.kestra.plugin.elasticsearch.Search
+                    connection:
+                      hosts:
+                        - "https://my-elastic-cluster:9200"
+                      headers:
+                        - "Authorization: ApiKey {{ secret('ES_API_KEY') }}"
+                    indexes:
+                      - "my_hybrid_index"
+                    request:
+                      retriever:
+                        rrf:
+                          retrievers:
+                            - standard:
+                                query:
+                                  match:
+                                    title: "Kestra"
+                            - knn:
+                                field: "vector_field"
+                                query_vector: [0.1, 0.2, 0.3, 0.4]
+                                k: 10
+                                num_candidates: 100
+                """
         )
     }
 )

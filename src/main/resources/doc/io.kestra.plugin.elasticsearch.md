@@ -14,6 +14,8 @@ Set `hosts` and any auth properties on each task.
 
 `Search` runs a query DSL request against an index and returns matching documents. For large result sets that exceed a single page, use `Scroll` instead — it pages through all matching documents using the Elasticsearch scroll API and streams them to Kestra internal storage. `Esql` runs an ES|QL query and is the right choice for SQL-style analytics and aggregations on Elasticsearch data.
 
+`Search` also takes semantic queries on `semantic_text` fields and hybrid `rrf` retrievers that combine a keyword query with a kNN search. See the Elasticsearch [vector search](https://www.elastic.co/docs/solutions/search/vector) documentation.
+
 For writes, `Put` indexes or replaces a single document by ID. `Bulk` replays an Elasticsearch bulk-format file (NDJSON or ION) from Kestra internal storage, applying its index/create/update/delete operations in batched requests — use it to replay a prepared bulk payload. `Load` reads ION records from a Kestra internal storage file and bulk-indexes them (index operations only), making it the natural follow-on after a download or transform step.
 
 `Get` retrieves a single document by ID. `Request` sends a raw HTTP request to any Elasticsearch REST API endpoint — use it for operations not covered by a dedicated task.
