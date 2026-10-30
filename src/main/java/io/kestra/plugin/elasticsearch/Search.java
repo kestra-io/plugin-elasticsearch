@@ -85,7 +85,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
                       hosts:
                         - "https://my-elastic-cluster:9200"
                       headers:
-                        Authorization: "ApiKey {{ secret('ES_API_KEY') }}"
+                        - "Authorization: ApiKey {{ secret('ES_API_KEY') }}"
                     indexes:
                       - "my_semantic_index"
                     request:
@@ -108,7 +108,7 @@ import static io.kestra.core.utils.Rethrow.throwConsumer;
                       hosts:
                         - "https://my-elastic-cluster:9200"
                       headers:
-                        Authorization: "ApiKey {{ secret('ES_API_KEY') }}"
+                        - "Authorization: ApiKey {{ secret('ES_API_KEY') }}"
                     indexes:
                       - "my_hybrid_index"
                     request:
