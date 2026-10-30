@@ -177,12 +177,15 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
             // metrics
             runContext.metric(Counter.of("requests.count", 1));
             runContext.metric(Counter.of("records", searchResponse.hits().hits().size()));
-            runContext.metric(Timer.of("requests.duration", Duration.ofNanos(searchResponse.took())));
+            runContext.metric(Timer.of("requests.duration", Duration.ofMillis(searchResponse.took())));
 
             // outputs
-            return outputBuilder
-                .total(searchResponse.hits().total().value())
-                .build();
+            var total = searchResponse.hits().total();
+            if (total != null) {
+                outputBuilder.total(total.value());
+            }
+
+            return outputBuilder.build();
         }
     }
 
@@ -228,7 +231,9 @@ public class Search extends AbstractSearch implements RunnableTask<Search.Output
 
         @Schema(
             title = "Total hits reported",
-            description = "Total hits reported by Elasticsearch, regardless of pagination."
+            description = """
+                Total hits reported by Elasticsearch, regardless of pagination.
+                This is null when Elasticsearch omits the total, such as when `track_total_hits=false`."""
         )
         private Long total;
 

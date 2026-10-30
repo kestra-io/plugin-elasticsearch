@@ -1,9 +1,9 @@
 plugins {
-    id 'io.kestra.gradle.repository-conventions' version '1.2.11'
-    id "io.kestra.gradle.plugin-doc-lint" version '1.2.11'
-    id 'io.kestra.gradle.spotless-conventions' version '1.2.11'
+    id 'io.kestra.gradle.repository-conventions' version '1.2.12'
+    id "io.kestra.gradle.plugin-doc-lint" version '1.2.12'
+    id 'io.kestra.gradle.spotless-conventions' version '1.2.12'
     id "com.vanniktech.maven.publish" version "0.37.0"
-    id "io.kestra.gradle.inject-bom-versions" version '1.2.11'
+    id "io.kestra.gradle.inject-bom-versions" version '1.2.12'
     id 'java-library'
     id "idea"
     id 'jacoco'
@@ -56,7 +56,7 @@ dependencies {
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
 
     // Libs
-    implementation 'io.kestra.plugin:plugin-elasticsearch-lib:1.0.1'
+    implementation 'io.kestra.plugin:plugin-elasticsearch-lib:1.1.0'
 }
 
 
@@ -94,6 +94,7 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-engine"
     testImplementation "org.hamcrest:hamcrest"
     testImplementation "org.hamcrest:hamcrest-library"
+    testImplementation "com.fasterxml.jackson.dataformat:jackson-dataformat-ion"
 
     testImplementation 'org.testcontainers:testcontainers-elasticsearch:2.0.5'
 }

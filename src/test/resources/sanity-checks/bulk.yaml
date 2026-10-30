@@ -1,5 +1,5 @@
 id: bulk
-namespace: sanitycheck.plugin-elasticsearch
+namespace: sanitychecks.plugin-elasticsearch
 
 inputs:
   - id: cs
@@ -44,4 +44,4 @@ tasks:
     conditions:
       - "{{ outputs.bulk.size == 4 }}"
       - "{{ outputs.get.row.field1 == 'value3' }}"
-      - "{{ outputs.get.row.doc.field2 == 'value2' }}"
+      - "{{ outputs.get.row.field2 == 'value2' }}"

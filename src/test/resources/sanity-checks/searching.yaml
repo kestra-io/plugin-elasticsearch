@@ -1,5 +1,5 @@
 id: searching
-namespace: sanitycheck.plugin-elasticsearch
+namespace: sanitychecks.plugin-elasticsearch
 
 inputs:
   - id: cs

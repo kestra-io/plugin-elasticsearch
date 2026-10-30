@@ -3,6 +3,7 @@ package io.kestra.plugin.elasticsearch;
 import java.io.BufferedInputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import com.sun.net.httpserver.HttpServer;
 
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
+import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.serializers.JacksonMapper;
@@ -41,6 +43,7 @@ class ScrollRegressionTest {
     private final List<String> requestedScrollIds = new CopyOnWriteArrayList<>();
     private final List<String> clearedScrollIds = new CopyOnWriteArrayList<>();
     private List<List<String>> pages;
+    private List<Long> responseDurations;
     private boolean failScroll;
     private boolean failClear;
     private int page;
@@ -93,15 +96,38 @@ class ScrollRegressionTest {
         String hits = names.stream()
             .map(name -> "{\"_index\":\"test\",\"_id\":\"" + name + "\",\"_source\":{\"name\":\"" + name + "\"}}")
             .collect(Collectors.joining(","));
-        return "{\"_scroll_id\":\"scroll-" + index + "\",\"took\":1,\"timed_out\":false," +
-            "\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"hits\":[" + hits + "]}}";
+        var took = responseDurations == null ? 1L : responseDurations.get(index);
+        return """
+            {
+                "_scroll_id": "scroll-%d",
+                "took": %d,
+                "timed_out": false,
+                "_shards": {"total":1,"successful":1,"skipped":0,"failed":0},
+                "hits": {"hits":[%s]}
+            }
+            """.formatted(index, took, hits);
+    }
+
+    private ElasticsearchConnection connection() {
+        var port = server.getAddress().getPort();
+        return ElasticsearchConnection.builder()
+            .hosts(List.of("http://127.0.0.1:%d".formatted(port)))
+            .build();
+    }
+
+    private Object metricValue(RunContext runContext, String name) {
+        return runContext.metrics().stream()
+            .filter(metric -> metric.getName().equals(name))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("Missing metric: %s".formatted(name)))
+            .getValue();
     }
 
     private Scroll task() {
         return Scroll.builder()
             .id(UUID.randomUUID().toString())
             .type(Scroll.class.getName())
-            .connection(ElasticsearchConnection.builder().hosts(List.of("http://127.0.0.1:" + server.getAddress().getPort())).build())
+            .connection(connection())
             .indexes(Property.ofValue(List.of("test")))
             .request("{\"size\":2,\"query\":{\"match_all\":{}}}")
             .build();
@@ -114,6 +140,47 @@ class ScrollRegressionTest {
         }
         assertEquals((long) expected.size(), output.getSize());
         assertEquals(expected, actual);
+    }
+
+    @Test
+    void searchDurationUsesMilliseconds() throws Exception {
+        pages = List.of(List.of("one", "two"));
+        responseDurations = List.of(1500L);
+        var runContext = runContextFactory.of();
+        var search = Search.builder()
+            .id(UUID.randomUUID().toString())
+            .type(Search.class.getName())
+            .connection(connection())
+            .indexes(Property.ofValue(List.of("test")))
+            .request("{\"query\":{\"match_all\":{}}}")
+            .build();
+
+        var output = search.run(runContext);
+
+        assertEquals(2, output.getSize());
+        assertEquals(List.of(Map.of("name", "one"), Map.of("name", "two")), output.getRows());
+        assertTrue(requestedScrollIds.isEmpty());
+        assertTrue(clearedScrollIds.isEmpty());
+        assertEquals(
+            Duration.ofMillis(1500),
+            metricValue(runContext, "requests.duration")
+        );
+    }
+
+    @Test
+    void scrollDurationUsesMilliseconds() throws Exception {
+        pages = List.of(List.of("one", "two"), List.of("three"));
+        responseDurations = List.of(1000L, 300L, 200L);
+        var runContext = runContextFactory.of();
+
+        assertStoredNames(task().run(runContext), List.of("one", "two", "three"));
+        assertEquals(List.of("scroll-0", "scroll-1"), requestedScrollIds);
+        assertEquals(List.of("scroll-2"), clearedScrollIds);
+        assertEquals(2D, metricValue(runContext, "requests.count"));
+        assertEquals(
+            Duration.ofMillis(1300),
+            metricValue(runContext, "requests.duration")
+        );
     }
 
     @Test

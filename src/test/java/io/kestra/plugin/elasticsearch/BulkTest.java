@@ -1,5 +1,6 @@
 package io.kestra.plugin.elasticsearch;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -42,7 +43,7 @@ class BulkTest extends ElsContainer {
         Map.of("create", Map.of("_index", indice, "_id", "3")),
         Map.of("field1", "value3"),
         Map.of("update", Map.of("_index", indice, "_id", "1")),
-        Map.of("doc", Map.of("field2", "value2")),
+        Map.of("doc", Map.of("field2", "value2"), "doc_as_upsert", true),
         Map.of("create", Map.of("_index", indice)),
         Map.of("field1", "value4")
     );
@@ -53,26 +54,9 @@ class BulkTest extends ElsContainer {
 
         String indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
 
-        File tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
-        try (OutputStream output = new FileOutputStream(tempFile)) {
-            DATA.apply(indice)
-                .forEach(
-                    throwConsumer(
-                        s -> output.write(
-                            (JacksonMapper
-                                .ofJson()
-                                .writeValueAsString(s) + "\n")
-                                .getBytes(StandardCharsets.UTF_8)
-                        )
-                    )
-                );
-        }
-
-        URI uri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
-
         Bulk put = Bulk.builder()
             .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .from(uri.toString())
+            .from(upload(DATA.apply(indice)).toString())
             .chunk(Property.ofValue(10))
             .build();
 
@@ -85,38 +69,83 @@ class BulkTest extends ElsContainer {
 
     @Test
     void duplicateCreate_fails() throws Exception {
-        var runContext = runContextFactory.of();
         var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
 
+        var e = assertThrows(
+            RuntimeException.class, () -> bulk(
+                List.of(
+                    Map.of("create", Map.of("_index", indice, "_id", "1")),
+                    Map.of("field1", "value1"),
+                    Map.of("create", Map.of("_index", indice, "_id", "1")),
+                    Map.of("field1", "value2")
+                )
+            )
+        );
+        assertThat(e.getMessage(), containsString("version conflict"));
+    }
+
+    @Test
+    void staleSeqNo_fails() throws Exception {
+        var indice = seedPastSeqNoZero();
+
+        var e = assertThrows(
+            RuntimeException.class, () -> bulk(
+                List.of(
+                    Map.of("index", Map.of("_index", indice, "_id", "1", "if_seq_no", 0, "if_primary_term", 1)),
+                    Map.of("field1", "stale")
+                )
+            )
+        );
+        assertThat(e.getMessage(), containsString("version conflict"));
+    }
+
+    @Test
+    void staleSeqNoOnPlainUpdate_fails() throws Exception {
+        var indice = seedPastSeqNoZero();
+
+        var e = assertThrows(
+            RuntimeException.class, () -> bulk(
+                List.of(
+                    Map.of("update", Map.of("_index", indice, "_id", "1", "if_seq_no", 0, "if_primary_term", 1)),
+                    Map.of("field1", "stale")
+                )
+            )
+        );
+        assertThat(e.getMessage(), containsString("version conflict"));
+    }
+
+    // index then update a doc, so its seq_no advances to 1
+    private String seedPastSeqNoZero() throws Exception {
+        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+        bulk(
+            List.of(
+                Map.of("index", Map.of("_index", indice, "_id", "1")),
+                Map.of("field1", "value1"),
+                Map.of("update", Map.of("_index", indice, "_id", "1")),
+                Map.of("doc", Map.of("field2", "value2"))
+            )
+        );
+        return indice;
+    }
+
+    private void bulk(List<? extends Map<String, ?>> rows) throws Exception {
+        Bulk.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .from(upload(rows).toString())
+            .build()
+            .run(runContextFactory.of());
+    }
+
+    private URI upload(List<? extends Map<String, ?>> rows) throws Exception {
         var tempFile = File.createTempFile(this.getClass().getSimpleName().toLowerCase() + "_", ".trs");
         try (OutputStream output = new FileOutputStream(tempFile)) {
-            List.of(
-                Map.of("create", Map.of("_index", indice, "_id", "1")),
-                Map.of("field1", "value1"),
-                Map.of("create", Map.of("_index", indice, "_id", "1")),
-                Map.of("field1", "value2")
-            )
-                .forEach(
-                    throwConsumer(
-                        s -> output.write(
-                            (JacksonMapper
-                                .ofJson()
-                                .writeValueAsString(s) + "\n")
-                                .getBytes(StandardCharsets.UTF_8)
-                        )
-                    )
-                );
+            for (var row : rows) {
+                output.write((JacksonMapper.ofJson().writeValueAsString(row) + "\n").getBytes(StandardCharsets.UTF_8));
+            }
         }
-
-        var uri = storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), new FileInputStream(tempFile));
-
-        var bulk = Bulk.builder()
-            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
-            .from(uri.toString())
-            .build();
-
-        var e = assertThrows(RuntimeException.class, () -> bulk.run(runContext));
-        assertThat(e.getMessage(), containsString("version conflict"));
+        try (var input = new FileInputStream(tempFile)) {
+            return storageInterface.put(TenantService.MAIN_TENANT, null, URI.create("/" + IdUtils.create() + ".ion"), input);
+        }
     }
 
     @Test
@@ -144,5 +173,37 @@ class BulkTest extends ElsContainer {
         assertThat(runOutput.getSize(), is(5L));
         assertThat(runContext.metrics().stream().filter(e -> e.getName().equals("requests.count")).findFirst().orElseThrow().getValue(), is(1D));
         assertThat(runContext.metrics().stream().filter(e -> e.getName().equals("records")).findFirst().orElseThrow().getValue(), is(5D));
+    }
+
+    @Test
+    void runBinaryIon() throws Exception {
+        var runContext = runContextFactory.of();
+
+        var indice = "ut_" + IdUtils.create().toLowerCase(Locale.ROOT);
+
+        var uri = storageInterface.put(
+            TenantService.MAIN_TENANT,
+            null,
+            URI.create("/" + IdUtils.create() + ".ion"),
+            new ByteArrayInputStream(BulkFileReaderTest.binaryIon(DATA.apply(indice)))
+        );
+
+        var runOutput = Bulk.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .from(uri.toString())
+            .chunk(Property.ofValue(10))
+            .build()
+            .run(runContext);
+
+        assertThat(runOutput.getSize(), is(5L));
+
+        var document = Get.builder()
+            .connection(ElasticsearchConnection.builder().hosts(hosts).build())
+            .index(Property.ofValue(indice))
+            .key(Property.ofValue("3"))
+            .build()
+            .run(runContextFactory.of());
+
+        assertThat(document.getRow().get("field1"), is("value3"));
     }
 }
