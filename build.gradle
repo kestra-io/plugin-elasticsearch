@@ -60,6 +60,22 @@ dependencies {
 }
 
 
+// Security pin: Jackson CVEs (jackson-databind / jackson-core, 2.x and 3.x).
+// The Kestra platform BOM and the Elasticsearch client lib ship older versions.
+// Remove this block once the platform / client bump Jackson to these versions or later.
+configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'com.fasterxml.jackson.core' && details.requested.name in ['jackson-databind', 'jackson-core']) {
+            details.useVersion '2.21.7'
+            details.because 'Jackson 2.x security fix'
+        } else if (details.requested.group == 'tools.jackson.core' && details.requested.name in ['jackson-databind', 'jackson-core']) {
+            details.useVersion '3.1.7'
+            details.because 'Jackson 3.x security fix'
+        }
+    }
+}
+
+
 /**********************************************************************************************************************\
  * Test
  **********************************************************************************************************************/
