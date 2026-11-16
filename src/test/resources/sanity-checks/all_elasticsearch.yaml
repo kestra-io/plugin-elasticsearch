@@ -17,9 +17,14 @@ tasks:
       - "{{ outputs.init.values.randomPort }}:9200"
     wait: false
 
-  - id: sleep_45
-    type: io.kestra.plugin.core.flow.Sleep
-    duration: "PT45S"
+  - id: wait_elasticsearch
+    type: io.kestra.plugin.core.http.Request
+    uri: "http://localhost:{{ outputs.init.values.randomPort }}/_cluster/health?wait_for_status=yellow&timeout=5s"
+    retry:
+      type: constant
+      interval: PT3S
+      maxDuration: PT3M
+      warningOnRetry: false
 
   - id: loop
     type: io.kestra.plugin.core.flow.Loop
